@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Threat Hunting on Feras Jalalah</title><link>https://feras454.github.io/categories/threat-hunting/</link><description>Recent content in Threat Hunting on Feras Jalalah</description><generator>Hugo -- gohugo.io</generator><language>en-us</language><lastBuildDate>Mon, 27 Nov 2023 00:00:00 +0000</lastBuildDate><atom:link href="https://feras454.github.io/categories/threat-hunting/index.xml" rel="self" type="application/rss+xml"/><item><title>Threat Hunting in Docker Uncovering Misconfigurations and Weaknesses</title><link>https://feras454.github.io/p/threat-hunting-in-docker-uncovering-misconfigurations-and-weaknesses/</link><pubDate>Mon, 27 Nov 2023 00:00:00 +0000</pubDate><guid>https://feras454.github.io/p/threat-hunting-in-docker-uncovering-misconfigurations-and-weaknesses/</guid><description>&lt;img src="https://feras454.github.io/p/threat-hunting-in-docker-uncovering-misconfigurations-and-weaknesses/dockerr.webp" alt="Featured image of post Threat Hunting in Docker Uncovering Misconfigurations and Weaknesses" />&lt;p>Hi 👋, in this post, we’ll explore common Docker misconfigurations that attackers exploit to compromise systems, such as exposed APIs and privileged containers. I’ll walk you through examples of these misconfigurations and show you how to detect them, providing valuable insights for threat hunters looking to secure Docker environments. Let’s get started!&lt;/p>
+&lt;p>&lt;img src="https://feras454.github.io/p/threat-hunting-in-docker-uncovering-misconfigurations-and-weaknesses/docker.png"
+width="1080"
+height="1058"
+srcset="https://feras454.github.io/p/threat-hunting-in-docker-uncovering-misconfigurations-and-weaknesses/docker_hu5275750290320909094.png 480w, https://feras454.github.io/p/threat-hunting-in-docker-uncovering-misconfigurations-and-weaknesses/docker_hu6396001363085101195.png 1024w"
+loading="lazy"
+alt="hmm"
+class="gallery-image"
+data-flex-grow="102"
+data-flex-basis="244px"
+>&lt;/p>
+&lt;hr>
+&lt;h2 id="exposed-docker-apis-">Exposed Docker APIs 💻
+&lt;/h2>&lt;p>One of the most dangerous misconfigurations in Docker is exposing the Docker API to the internet without proper authentication. The Docker API allows full control over the container environment, and when it&amp;rsquo;s publicly exposed, attackers can remotely access and manage containers.&lt;/p>
+&lt;h3 id="attack-overview">Attack Overview
+&lt;/h3>&lt;p>Docker’s API typically listens on a local Unix socket, but some configurations expose the API over TCP, usually on port &lt;strong>2375&lt;/strong> or &lt;strong>2376&lt;/strong>. If attackers find an exposed API, they can control containers remotely without any authentication.&lt;/p>
+&lt;h3 id="exploitation">Exploitation
+&lt;/h3>&lt;p>Attackers often use tools like &lt;strong>Shodan&lt;/strong> to scan for exposed Docker APIs. Once they find one, they can use commands like this to create containers remotely:&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-bash" data-lang="bash">&lt;span class="line">&lt;span class="cl">curl -X POST http://&amp;lt;docker_host_ip&amp;gt;:2375/containers/create -d &lt;span class="s1">&amp;#39;{&amp;#34;Image&amp;#34;:&amp;#34;alpine&amp;#34;}&amp;#39;&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>This command creates a new container without any permissions required.&lt;/p>
+&lt;h3 id="detection-strategy">Detection Strategy
+&lt;/h3>&lt;p>To detect exposed Docker APIs:&lt;/p>
+&lt;ol>
+&lt;li>Use &lt;strong>Nmap&lt;/strong> to scan for open Docker API ports:&lt;/li>
+&lt;/ol>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-bash" data-lang="bash">&lt;span class="line">&lt;span class="cl">nmap -p &lt;span class="m">2375&lt;/span> --open &amp;lt;target_subnet&amp;gt;
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;ol start="2">
+&lt;li>Monitor API logs for unusual activity, especially API requests originating from external IPs.&lt;/li>
+&lt;/ol>
+&lt;hr>
+&lt;h2 id="privileged-containers-">Privileged Containers 🚀
+&lt;/h2>&lt;p>Running Docker containers in &lt;strong>privileged mode&lt;/strong> gives them full access to the host’s devices and resources, significantly increasing the attack surface. This misconfiguration can lead to container escapes, where attackers can interact with the host system directly.&lt;/p>
+&lt;h3 id="attack-overview-1">Attack Overview
+&lt;/h3>&lt;p>A privileged container has root-level access to the host’s devices, which allows attackers to escape the container’s isolation and interact with the host.&lt;/p>
+&lt;h3 id="exploitation-1">Exploitation
+&lt;/h3>&lt;p>Once inside a privileged container, attackers can mount the host&amp;rsquo;s root directory and manipulate the file system. Here’s how:&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-bash" data-lang="bash">&lt;span class="line">&lt;span class="cl">docker run --privileged -v /:/host --rm -it alpine chroot /host
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>This grants access to the entire host’s file system, enabling the attacker to read or modify critical files.&lt;/p>
+&lt;h3 id="detection-strategy-1">Detection Strategy
+&lt;/h3>&lt;p>To hunt for privileged containers, run the following command:&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-bash" data-lang="bash">&lt;span class="line">&lt;span class="cl">docker inspect --format &lt;span class="s1">&amp;#39;{{ .HostConfig.Privileged }}&amp;#39;&lt;/span> &lt;span class="k">$(&lt;/span>docker ps -q&lt;span class="k">)&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>Investigate any containers running in privileged mode and verify whether it is necessary.&lt;/p>
+&lt;hr>
+&lt;h2 id="insecure-volume-mounts-">Insecure Volume Mounts 📁
+&lt;/h2>&lt;p>Docker containers can mount directories from the host file system, which is useful for sharing data. However, insecure mounts of sensitive directories (such as &lt;code>/etc&lt;/code> or &lt;code>/root&lt;/code>) can give attackers access to important host files.&lt;/p>
+&lt;h3 id="attack-overview-2">Attack Overview
+&lt;/h3>&lt;p>By mounting sensitive directories into a container, attackers can easily read and modify host data, bypassing the isolation that containers usually provide.&lt;/p>
+&lt;h3 id="exploitation-2">Exploitation
+&lt;/h3>&lt;p>An attacker can mount the entire host file system and access critical files:&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-bash" data-lang="bash">&lt;span class="line">&lt;span class="cl">docker run -v /:/host --rm -it alpine /bin/sh
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>Once inside, they can access critical data:&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-bash" data-lang="bash">&lt;span class="line">&lt;span class="cl">cat /host/etc/shadow
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;h3 id="detection-strategy-2">Detection Strategy
+&lt;/h3>&lt;p>Inspect Docker containers for dangerous volume mounts:&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-bash" data-lang="bash">&lt;span class="line">&lt;span class="cl">docker inspect --format &lt;span class="s1">&amp;#39;{{ .Mounts }}&amp;#39;&lt;/span> &lt;span class="k">$(&lt;/span>docker ps -q&lt;span class="k">)&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>Pay special attention to mounts involving directories like &lt;code>/&lt;/code>, &lt;code>/etc&lt;/code>, or &lt;code>/root&lt;/code>.&lt;/p>
+&lt;hr>
+&lt;h2 id="cgroups-and-namespace-escapes-">Cgroups and Namespace Escapes 🛡️
+&lt;/h2>&lt;p>Docker uses &lt;strong>cgroups&lt;/strong> and &lt;strong>namespaces&lt;/strong> to isolate containers from the host and from each other. However, containers with excessive privileges, such as the &lt;code>SYS_ADMIN&lt;/code> capability, can escape this isolation and interact directly with the host.&lt;/p>
+&lt;h3 id="attack-overview-3">Attack Overview
+&lt;/h3>&lt;p>When attackers gain control of a container with excessive capabilities, they can break out of the container’s isolation, giving them access to the host system.&lt;/p>
+&lt;h3 id="exploitation-3">Exploitation
+&lt;/h3>&lt;p>By running a container with the &lt;code>SYS_ADMIN&lt;/code> capability, an attacker can perform operations that allow them to escape to the host:&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-bash" data-lang="bash">&lt;span class="line">&lt;span class="cl">docker run --cap-add&lt;span class="o">=&lt;/span>SYS_ADMIN -it alpine /bin/sh
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;h3 id="detection-strategy-3">Detection Strategy
+&lt;/h3>&lt;p>To detect containers running with dangerous capabilities, inspect all running containers:&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-bash" data-lang="bash">&lt;span class="line">&lt;span class="cl">docker inspect --format &lt;span class="s1">&amp;#39;{{ .HostConfig.CapAdd }}&amp;#39;&lt;/span> &lt;span class="k">$(&lt;/span>docker ps -q&lt;span class="k">)&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>Look for capabilities like &lt;code>SYS_ADMIN&lt;/code> or &lt;code>NET_ADMIN&lt;/code>, which grant elevated privileges.&lt;/p>
+&lt;hr>
+&lt;h2 id="resource-exhaustion-denial-of-service-dos-">Resource Exhaustion: Denial of Service (DoS) 💥
+&lt;/h2>&lt;p>Containers that lack resource limits can consume large amounts of CPU, memory, or disk space, which can lead to a Denial of Service (DoS) attack. Attackers can exploit this by running containers that intentionally exhaust system resources, leading to a crash.&lt;/p>
+&lt;h3 id="attack-overview-4">Attack Overview
+&lt;/h3>&lt;p>By default, Docker doesn’t impose strict resource limits on containers. Attackers can take advantage of this by creating containers that consume all available system resources, causing system slowdowns or crashes.&lt;/p>
+&lt;h3 id="exploitation-4">Exploitation
+&lt;/h3>&lt;p>An attacker can run a container that consumes excessive resources, such as CPU, using the &lt;code>stress&lt;/code> tool:&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-bash" data-lang="bash">&lt;span class="line">&lt;span class="cl">docker run --rm -it --cpu-shares&lt;span class="o">=&lt;/span>&lt;span class="m">1024&lt;/span> --memory&lt;span class="o">=&lt;/span>1g stress --cpu &lt;span class="m">8&lt;/span> --timeout &lt;span class="m">60&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>This command forces the container to use 8 CPU cores, potentially overwhelming the host.&lt;/p>
+&lt;h3 id="detection-strategy-4">Detection Strategy
+&lt;/h3>&lt;p>Monitor Docker containers for excessive resource usage using the &lt;code>docker stats&lt;/code> command:&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-bash" data-lang="bash">&lt;span class="line">&lt;span class="cl">docker stats
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>Look for containers consuming abnormally high CPU or memory and enforce resource limits to prevent abuse.&lt;/p>
+&lt;hr>
+&lt;h3 id="conclusion">Conclusion
+&lt;/h3>&lt;ul>
+&lt;li>&lt;strong>Hunt for Exposed APIs&lt;/strong>: Scan for open Docker API ports and review access logs for unauthorized requests.&lt;/li>
+&lt;li>&lt;strong>Privileged Container Detection&lt;/strong>: Identify and investigate containers running with privileged mode.&lt;/li>
+&lt;li>&lt;strong>Insecure Mounts&lt;/strong>: Hunt for containers mounting sensitive directories from the host.&lt;/li>
+&lt;li>&lt;strong>Excessive Capabilities&lt;/strong>: Detect containers with dangerous capabilities like &lt;code>SYS_ADMIN&lt;/code> and reduce permissions.&lt;/li>
+&lt;li>&lt;strong>Resource Abuse&lt;/strong>: Monitor resource usage to detect abnormal spikes that could indicate a denial of service attempt.&lt;/li>
+&lt;/ul>
+&lt;p>These misconfigurations are prime targets for attackers, making them crucial areas for threat hunters to focus on.&lt;/p>
+&lt;p>&lt;strong>References&lt;/strong>:&lt;/p>
+&lt;ul>
+&lt;li>&lt;a class="link" href="https://docs.docker.com/engine/security/security/" target="_blank" rel="noopener"
+>Docker Security Best Practices&lt;/a>&lt;/li>
+&lt;li>&lt;a class="link" href="https://cheatsheetseries.owasp.org/cheatsheets/Docker_Security_Cheat_Sheet.html" target="_blank" rel="noopener"
+>Docker Security Cheat Sheet&lt;/a>&lt;/li>
+&lt;/ul></description></item></channel></rss>

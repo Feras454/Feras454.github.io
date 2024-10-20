@@ -1,0 +1,657 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Posts on Feras Jalalah</title><link>https://feras454.github.io/post/</link><description>Recent content in Posts on Feras Jalalah</description><generator>Hugo -- gohugo.io</generator><language>en-us</language><lastBuildDate>Mon, 27 Nov 2023 00:00:00 +0000</lastBuildDate><atom:link href="https://feras454.github.io/post/index.xml" rel="self" type="application/rss+xml"/><item><title>Threat Hunting in Docker Uncovering Misconfigurations and Weaknesses</title><link>https://feras454.github.io/p/threat-hunting-in-docker-uncovering-misconfigurations-and-weaknesses/</link><pubDate>Mon, 27 Nov 2023 00:00:00 +0000</pubDate><guid>https://feras454.github.io/p/threat-hunting-in-docker-uncovering-misconfigurations-and-weaknesses/</guid><description>&lt;img src="https://feras454.github.io/p/threat-hunting-in-docker-uncovering-misconfigurations-and-weaknesses/dockerr.webp" alt="Featured image of post Threat Hunting in Docker Uncovering Misconfigurations and Weaknesses" />&lt;p>Hi 👋, in this post, we’ll explore common Docker misconfigurations that attackers exploit to compromise systems, such as exposed APIs and privileged containers. I’ll walk you through examples of these misconfigurations and show you how to detect them, providing valuable insights for threat hunters looking to secure Docker environments. Let’s get started!&lt;/p>
+&lt;p>&lt;img src="https://feras454.github.io/p/threat-hunting-in-docker-uncovering-misconfigurations-and-weaknesses/docker.png"
+width="1080"
+height="1058"
+srcset="https://feras454.github.io/p/threat-hunting-in-docker-uncovering-misconfigurations-and-weaknesses/docker_hu5275750290320909094.png 480w, https://feras454.github.io/p/threat-hunting-in-docker-uncovering-misconfigurations-and-weaknesses/docker_hu6396001363085101195.png 1024w"
+loading="lazy"
+alt="hmm"
+class="gallery-image"
+data-flex-grow="102"
+data-flex-basis="244px"
+>&lt;/p>
+&lt;hr>
+&lt;h2 id="exposed-docker-apis-">Exposed Docker APIs 💻
+&lt;/h2>&lt;p>One of the most dangerous misconfigurations in Docker is exposing the Docker API to the internet without proper authentication. The Docker API allows full control over the container environment, and when it&amp;rsquo;s publicly exposed, attackers can remotely access and manage containers.&lt;/p>
+&lt;h3 id="attack-overview">Attack Overview
+&lt;/h3>&lt;p>Docker’s API typically listens on a local Unix socket, but some configurations expose the API over TCP, usually on port &lt;strong>2375&lt;/strong> or &lt;strong>2376&lt;/strong>. If attackers find an exposed API, they can control containers remotely without any authentication.&lt;/p>
+&lt;h3 id="exploitation">Exploitation
+&lt;/h3>&lt;p>Attackers often use tools like &lt;strong>Shodan&lt;/strong> to scan for exposed Docker APIs. Once they find one, they can use commands like this to create containers remotely:&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-bash" data-lang="bash">&lt;span class="line">&lt;span class="cl">curl -X POST http://&amp;lt;docker_host_ip&amp;gt;:2375/containers/create -d &lt;span class="s1">&amp;#39;{&amp;#34;Image&amp;#34;:&amp;#34;alpine&amp;#34;}&amp;#39;&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>This command creates a new container without any permissions required.&lt;/p>
+&lt;h3 id="detection-strategy">Detection Strategy
+&lt;/h3>&lt;p>To detect exposed Docker APIs:&lt;/p>
+&lt;ol>
+&lt;li>Use &lt;strong>Nmap&lt;/strong> to scan for open Docker API ports:&lt;/li>
+&lt;/ol>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-bash" data-lang="bash">&lt;span class="line">&lt;span class="cl">nmap -p &lt;span class="m">2375&lt;/span> --open &amp;lt;target_subnet&amp;gt;
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;ol start="2">
+&lt;li>Monitor API logs for unusual activity, especially API requests originating from external IPs.&lt;/li>
+&lt;/ol>
+&lt;hr>
+&lt;h2 id="privileged-containers-">Privileged Containers 🚀
+&lt;/h2>&lt;p>Running Docker containers in &lt;strong>privileged mode&lt;/strong> gives them full access to the host’s devices and resources, significantly increasing the attack surface. This misconfiguration can lead to container escapes, where attackers can interact with the host system directly.&lt;/p>
+&lt;h3 id="attack-overview-1">Attack Overview
+&lt;/h3>&lt;p>A privileged container has root-level access to the host’s devices, which allows attackers to escape the container’s isolation and interact with the host.&lt;/p>
+&lt;h3 id="exploitation-1">Exploitation
+&lt;/h3>&lt;p>Once inside a privileged container, attackers can mount the host&amp;rsquo;s root directory and manipulate the file system. Here’s how:&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-bash" data-lang="bash">&lt;span class="line">&lt;span class="cl">docker run --privileged -v /:/host --rm -it alpine chroot /host
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>This grants access to the entire host’s file system, enabling the attacker to read or modify critical files.&lt;/p>
+&lt;h3 id="detection-strategy-1">Detection Strategy
+&lt;/h3>&lt;p>To hunt for privileged containers, run the following command:&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-bash" data-lang="bash">&lt;span class="line">&lt;span class="cl">docker inspect --format &lt;span class="s1">&amp;#39;{{ .HostConfig.Privileged }}&amp;#39;&lt;/span> &lt;span class="k">$(&lt;/span>docker ps -q&lt;span class="k">)&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>Investigate any containers running in privileged mode and verify whether it is necessary.&lt;/p>
+&lt;hr>
+&lt;h2 id="insecure-volume-mounts-">Insecure Volume Mounts 📁
+&lt;/h2>&lt;p>Docker containers can mount directories from the host file system, which is useful for sharing data. However, insecure mounts of sensitive directories (such as &lt;code>/etc&lt;/code> or &lt;code>/root&lt;/code>) can give attackers access to important host files.&lt;/p>
+&lt;h3 id="attack-overview-2">Attack Overview
+&lt;/h3>&lt;p>By mounting sensitive directories into a container, attackers can easily read and modify host data, bypassing the isolation that containers usually provide.&lt;/p>
+&lt;h3 id="exploitation-2">Exploitation
+&lt;/h3>&lt;p>An attacker can mount the entire host file system and access critical files:&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-bash" data-lang="bash">&lt;span class="line">&lt;span class="cl">docker run -v /:/host --rm -it alpine /bin/sh
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>Once inside, they can access critical data:&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-bash" data-lang="bash">&lt;span class="line">&lt;span class="cl">cat /host/etc/shadow
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;h3 id="detection-strategy-2">Detection Strategy
+&lt;/h3>&lt;p>Inspect Docker containers for dangerous volume mounts:&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-bash" data-lang="bash">&lt;span class="line">&lt;span class="cl">docker inspect --format &lt;span class="s1">&amp;#39;{{ .Mounts }}&amp;#39;&lt;/span> &lt;span class="k">$(&lt;/span>docker ps -q&lt;span class="k">)&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>Pay special attention to mounts involving directories like &lt;code>/&lt;/code>, &lt;code>/etc&lt;/code>, or &lt;code>/root&lt;/code>.&lt;/p>
+&lt;hr>
+&lt;h2 id="cgroups-and-namespace-escapes-">Cgroups and Namespace Escapes 🛡️
+&lt;/h2>&lt;p>Docker uses &lt;strong>cgroups&lt;/strong> and &lt;strong>namespaces&lt;/strong> to isolate containers from the host and from each other. However, containers with excessive privileges, such as the &lt;code>SYS_ADMIN&lt;/code> capability, can escape this isolation and interact directly with the host.&lt;/p>
+&lt;h3 id="attack-overview-3">Attack Overview
+&lt;/h3>&lt;p>When attackers gain control of a container with excessive capabilities, they can break out of the container’s isolation, giving them access to the host system.&lt;/p>
+&lt;h3 id="exploitation-3">Exploitation
+&lt;/h3>&lt;p>By running a container with the &lt;code>SYS_ADMIN&lt;/code> capability, an attacker can perform operations that allow them to escape to the host:&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-bash" data-lang="bash">&lt;span class="line">&lt;span class="cl">docker run --cap-add&lt;span class="o">=&lt;/span>SYS_ADMIN -it alpine /bin/sh
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;h3 id="detection-strategy-3">Detection Strategy
+&lt;/h3>&lt;p>To detect containers running with dangerous capabilities, inspect all running containers:&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-bash" data-lang="bash">&lt;span class="line">&lt;span class="cl">docker inspect --format &lt;span class="s1">&amp;#39;{{ .HostConfig.CapAdd }}&amp;#39;&lt;/span> &lt;span class="k">$(&lt;/span>docker ps -q&lt;span class="k">)&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>Look for capabilities like &lt;code>SYS_ADMIN&lt;/code> or &lt;code>NET_ADMIN&lt;/code>, which grant elevated privileges.&lt;/p>
+&lt;hr>
+&lt;h2 id="resource-exhaustion-denial-of-service-dos-">Resource Exhaustion: Denial of Service (DoS) 💥
+&lt;/h2>&lt;p>Containers that lack resource limits can consume large amounts of CPU, memory, or disk space, which can lead to a Denial of Service (DoS) attack. Attackers can exploit this by running containers that intentionally exhaust system resources, leading to a crash.&lt;/p>
+&lt;h3 id="attack-overview-4">Attack Overview
+&lt;/h3>&lt;p>By default, Docker doesn’t impose strict resource limits on containers. Attackers can take advantage of this by creating containers that consume all available system resources, causing system slowdowns or crashes.&lt;/p>
+&lt;h3 id="exploitation-4">Exploitation
+&lt;/h3>&lt;p>An attacker can run a container that consumes excessive resources, such as CPU, using the &lt;code>stress&lt;/code> tool:&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-bash" data-lang="bash">&lt;span class="line">&lt;span class="cl">docker run --rm -it --cpu-shares&lt;span class="o">=&lt;/span>&lt;span class="m">1024&lt;/span> --memory&lt;span class="o">=&lt;/span>1g stress --cpu &lt;span class="m">8&lt;/span> --timeout &lt;span class="m">60&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>This command forces the container to use 8 CPU cores, potentially overwhelming the host.&lt;/p>
+&lt;h3 id="detection-strategy-4">Detection Strategy
+&lt;/h3>&lt;p>Monitor Docker containers for excessive resource usage using the &lt;code>docker stats&lt;/code> command:&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-bash" data-lang="bash">&lt;span class="line">&lt;span class="cl">docker stats
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>Look for containers consuming abnormally high CPU or memory and enforce resource limits to prevent abuse.&lt;/p>
+&lt;hr>
+&lt;h3 id="conclusion">Conclusion
+&lt;/h3>&lt;ul>
+&lt;li>&lt;strong>Hunt for Exposed APIs&lt;/strong>: Scan for open Docker API ports and review access logs for unauthorized requests.&lt;/li>
+&lt;li>&lt;strong>Privileged Container Detection&lt;/strong>: Identify and investigate containers running with privileged mode.&lt;/li>
+&lt;li>&lt;strong>Insecure Mounts&lt;/strong>: Hunt for containers mounting sensitive directories from the host.&lt;/li>
+&lt;li>&lt;strong>Excessive Capabilities&lt;/strong>: Detect containers with dangerous capabilities like &lt;code>SYS_ADMIN&lt;/code> and reduce permissions.&lt;/li>
+&lt;li>&lt;strong>Resource Abuse&lt;/strong>: Monitor resource usage to detect abnormal spikes that could indicate a denial of service attempt.&lt;/li>
+&lt;/ul>
+&lt;p>These misconfigurations are prime targets for attackers, making them crucial areas for threat hunters to focus on.&lt;/p>
+&lt;p>&lt;strong>References&lt;/strong>:&lt;/p>
+&lt;ul>
+&lt;li>&lt;a class="link" href="https://docs.docker.com/engine/security/security/" target="_blank" rel="noopener"
+>Docker Security Best Practices&lt;/a>&lt;/li>
+&lt;li>&lt;a class="link" href="https://cheatsheetseries.owasp.org/cheatsheets/Docker_Security_Cheat_Sheet.html" target="_blank" rel="noopener"
+>Docker Security Cheat Sheet&lt;/a>&lt;/li>
+&lt;/ul></description></item><item><title>Comprehensive DFIR Tools and Resources</title><link>https://feras454.github.io/p/comprehensive-dfir-tools-and-resources/</link><pubDate>Sat, 28 Oct 2023 00:00:00 +0000</pubDate><guid>https://feras454.github.io/p/comprehensive-dfir-tools-and-resources/</guid><description>&lt;img src="https://feras454.github.io/p/comprehensive-dfir-tools-and-resources/df.webp" alt="Featured image of post Comprehensive DFIR Tools and Resources" />&lt;blockquote>
+&lt;p>Disclaimer: The content provided here is not my original work. It has been reposted and edited for reference purposes only. All credits go to the original author. You can find the source of this content at meirwah/awesome-incident-response.&lt;/p>
+&lt;/blockquote>
+&lt;p>Digital Forensics and Incident Response (&lt;a class="link" href="http://www.acronymfinder.com/Digital-Forensics%2c-Incident-Response-%28DFIR%29.html" target="_blank" rel="noopener"
+>DFIR&lt;/a>) teams are groups of people in an organization responsible for managing the response to a security incident, including gathering evidence of the incident, remediating its effects, and implementing controls to prevent the incident from recurring in the future.&lt;/p>
+&lt;h2 id="contents">Contents
+&lt;/h2>&lt;ul>
+&lt;li>&lt;a class="link" href="#adversary-emulation" >Adversary Emulation&lt;/a>&lt;/li>
+&lt;li>&lt;a class="link" href="#all-in-one-tools" >All-In-One Tools&lt;/a>&lt;/li>
+&lt;li>&lt;a class="link" href="#books" >Books&lt;/a>&lt;/li>
+&lt;li>&lt;a class="link" href="#communities" >Communities&lt;/a>&lt;/li>
+&lt;li>&lt;a class="link" href="#disk-image-creation-tools" >Disk Image Creation Tools&lt;/a>&lt;/li>
+&lt;li>&lt;a class="link" href="#evidence-collection" >Evidence Collection&lt;/a>&lt;/li>
+&lt;li>&lt;a class="link" href="#incident-management" >Incident Management&lt;/a>&lt;/li>
+&lt;li>&lt;a class="link" href="#knowledge-bases" >Knowledge Bases&lt;/a>&lt;/li>
+&lt;li>&lt;a class="link" href="#linux-distributions" >Linux Distributions&lt;/a>&lt;/li>
+&lt;li>&lt;a class="link" href="#linux-evidence-collection" >Linux Evidence Collection&lt;/a>&lt;/li>
+&lt;li>&lt;a class="link" href="#log-analysis-tools" >Log Analysis Tools&lt;/a>&lt;/li>
+&lt;li>&lt;a class="link" href="#memory-analysis-tools" >Memory Analysis Tools&lt;/a>&lt;/li>
+&lt;li>&lt;a class="link" href="#memory-imaging-tools" >Memory Imaging Tools&lt;/a>&lt;/li>
+&lt;li>&lt;a class="link" href="#osx-evidence-collection" >OSX Evidence Collection&lt;/a>&lt;/li>
+&lt;li>&lt;a class="link" href="#other-lists" >Other Lists&lt;/a>&lt;/li>
+&lt;li>&lt;a class="link" href="#other-tools" >Other Tools&lt;/a>&lt;/li>
+&lt;li>&lt;a class="link" href="#playbooks" >Playbooks&lt;/a>&lt;/li>
+&lt;li>&lt;a class="link" href="#process-dump-tools" >Process Dump Tools&lt;/a>&lt;/li>
+&lt;li>&lt;a class="link" href="#sandboxingreversing-tools" >Sandboxing/Reversing Tools&lt;/a>&lt;/li>
+&lt;li>&lt;a class="link" href="#scanner-tools" >Scanner Tools&lt;/a>&lt;/li>
+&lt;li>&lt;a class="link" href="#timeline-tools" >Timeline Tools&lt;/a>&lt;/li>
+&lt;li>&lt;a class="link" href="#videos" >Videos&lt;/a>&lt;/li>
+&lt;li>&lt;a class="link" href="#windows-evidence-collection" >Windows Evidence Collection&lt;/a>&lt;/li>
+&lt;/ul>
+&lt;h2 id="ir-tools-collection">IR Tools Collection
+&lt;/h2>&lt;h3 id="adversary-emulation">Adversary Emulation
+&lt;/h3>&lt;ul>
+&lt;li>&lt;b>&lt;code>  2462⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   426🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/NextronSystems/APTSimulator" target="_blank" rel="noopener"
+>APTSimulator&lt;/a>) - Windows Batch script that uses a set of tools and output files to make a system look as if it was compromised.&lt;/li>
+&lt;li>&lt;b>&lt;code>  9683⭐&lt;/code>&lt;/b> &lt;b>&lt;code>  2783🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/redcanaryco/atomic-red-team" target="_blank" rel="noopener"
+>Atomic Red Team (ART)&lt;/a>) - Small and highly portable detection tests mapped to the MITRE ATT&amp;amp;CK Framework.&lt;/li>
+&lt;li>&lt;b>&lt;code>   251⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    64🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/jymcheong/AutoTTP" target="_blank" rel="noopener"
+>AutoTTP&lt;/a>) - Automated Tactics Techniques &amp;amp; Procedures. Re-running complex sequences manually for regression tests, product evaluations, generate data for researchers.&lt;/li>
+&lt;li>&lt;b>&lt;code>  5574⭐&lt;/code>&lt;/b> &lt;b>&lt;code>  1063🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/mitre/caldera" target="_blank" rel="noopener"
+>Caldera&lt;/a>) - Automated adversary emulation system that performs post-compromise adversarial behavior within Windows Enterprise networks. It generates plans during operation using a planning system and a pre-configured adversary model based on the Adversarial Tactics, Techniques &amp;amp; Common Knowledge (ATT&amp;amp;CK™) project.&lt;/li>
+&lt;li>&lt;b>&lt;code>   991⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   146🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/TryCatchHCF/DumpsterFire" target="_blank" rel="noopener"
+>DumpsterFire&lt;/a>) - Modular, menu-driven, cross-platform tool for building repeatable, time-delayed, distributed security events. Easily create custom event chains for Blue Team drills and sensor / alert mapping. Red Teams can create decoy incidents, distractions, and lures to support and scale their operations.&lt;/li>
+&lt;li>&lt;b>&lt;code>  1095⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   151🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/uber-common/metta" target="_blank" rel="noopener"
+>Metta&lt;/a>) - Information security preparedness tool to do adversarial simulation.&lt;/li>
+&lt;li>&lt;b>&lt;code>  1247⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   132🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/alphasoc/flightsim" target="_blank" rel="noopener"
+>Network Flight Simulator&lt;/a>) - Lightweight utility used to generate malicious network traffic and help security teams to evaluate security controls and network visibility.&lt;/li>
+&lt;li>&lt;b>&lt;code>  1050⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   213🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/endgameinc/RTA" target="_blank" rel="noopener"
+>Red Team Automation (RTA)&lt;/a>) - RTA provides a framework of scripts designed to allow blue teams to test their detection capabilities against malicious tradecraft, modeled after MITRE ATT&amp;amp;CK.&lt;/li>
+&lt;li>&lt;b>&lt;code>  1244⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   193🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/redhuntlabs/RedHunt-OS" target="_blank" rel="noopener"
+>RedHunt-OS&lt;/a>) - Virtual machine for adversary emulation and threat hunting.&lt;/li>
+&lt;/ul>
+&lt;h3 id="all-in-one-tools">All-In-One Tools
+&lt;/h3>&lt;ul>
+&lt;li>🌎 &lt;a class="link" href="belkasoft.com/ec" >Belkasoft Evidence Center&lt;/a> - The toolkit will quickly extract digital evidence from multiple sources by analyzing hard drives, drive images, memory dumps, iOS, Blackberry and Android backups, UFED, JTAG and chip-off dumps.&lt;/li>
+&lt;li>&lt;b>&lt;code>   645⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   148🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/PowerShellMafia/CimSweep" target="_blank" rel="noopener"
+>CimSweep&lt;/a>) - Suite of CIM/WMI-based tools that enable the ability to perform incident response and hunting operations remotely across all versions of Windows.&lt;/li>
+&lt;li>&lt;b>&lt;code>   142⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    25🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/byt3smith/CIRTKit" target="_blank" rel="noopener"
+>CIRTkit&lt;/a>) - CIRTKit is not just a collection of tools, but also a framework to aid in the ongoing unification of Incident Response and Forensics investigation processes.&lt;/li>
+&lt;li>&lt;a class="link" href="http://www.cybertriage.com" target="_blank" rel="noopener"
+>Cyber Triage&lt;/a> - Cyber Triage collects and analyzes host data to determine if it is compromised. It&amp;rsquo;s scoring system and recommendation engine allow you to quickly focus on the important artifacts. It can import data from its collection tool, disk images, and other collectors (such as KAPE). It can run on an examiner&amp;rsquo;s desktop or in a server model. Developed by Sleuth Kit Labs, which also makes Autopsy.&lt;/li>
+&lt;li>&lt;b>&lt;code>   914⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    64🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/fox-it/dissect" target="_blank" rel="noopener"
+>Dissect&lt;/a>) - Dissect is a digital forensics &amp;amp; incident response framework and toolset that allows you to quickly access and analyse forensic artefacts from various disk and file formats, developed by Fox-IT (part of NCC Group).&lt;/li>
+&lt;li>&lt;b>&lt;code>   619⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    90🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/mwielgoszewski/doorman" target="_blank" rel="noopener"
+>Doorman&lt;/a>) - osquery fleet manager that allows remote management of osquery configurations retrieved by nodes. It takes advantage of osquery&amp;rsquo;s TLS configuration, logger, and distributed read/write endpoints, to give administrators visibility across a fleet of devices with minimal overhead and intrusiveness.&lt;/li>
+&lt;li>&lt;b>&lt;code>   185⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    54🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/CrowdStrike/falcon-orchestrator" target="_blank" rel="noopener"
+>Falcon Orchestrator&lt;/a>) - Extendable Windows-based application that provides workflow automation, case management and security response functionality.&lt;/li>
+&lt;li>&lt;b>&lt;code>  6485⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   907🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/fireeye/flare-vm" target="_blank" rel="noopener"
+>Flare&lt;/a>) - A fully customizable, Windows-based security distribution for malware analysis, incident response, penetration testing.&lt;/li>
+&lt;li>&lt;b>&lt;code>  3049⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   422🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/fleetdm/fleet" target="_blank" rel="noopener"
+>Fleetdm&lt;/a>) - State of the art host monitoring platform tailored for security experts. Leveraging Facebook&amp;rsquo;s battle-tested osquery project, Fleetdm delivers continuous updates, features and fast answers to big questions.&lt;/li>
+&lt;li>&lt;b>&lt;code>  4766⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   764🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/google/grr" target="_blank" rel="noopener"
+>GRR Rapid Response&lt;/a>) - Incident response framework focused on remote live forensics. It consists of a python agent (client) that is installed on target systems, and a python server infrastructure that can manage and talk to the agent. Besides the included Python API client, &lt;b>&lt;code>    56⭐&lt;/code>&lt;/b> &lt;b>&lt;code>     7🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/swisscom/PowerGRR" target="_blank" rel="noopener"
+>PowerGRR&lt;/a>) provides an API client library in PowerShell working on Windows, Linux and macOS for GRR automation and scripting.&lt;/li>
+&lt;li>&lt;b>&lt;code>  1053⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   175🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/dfir-iris/iris-web" target="_blank" rel="noopener"
+>IRIS&lt;/a>) - IRIS is a web collaborative platform for incident response analysts allowing to share investigations at a technical level.&lt;/li>
+&lt;li>&lt;b>&lt;code>   761⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   111🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/DFIRKuiper/Kuiper" target="_blank" rel="noopener"
+>Kuiper&lt;/a>) - Digital Forensics Investigation Platform&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="www.limacharlie.io/" >Limacharlie&lt;/a> - Endpoint security platform composed of a collection of small projects all working together that gives you a cross-platform (Windows, OSX, Linux, Android and iOS) low-level environment for managing and pushing additional modules into memory to extend its functionality.&lt;/li>
+&lt;li>&lt;b>&lt;code>  1459⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   100🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/matanolabs/matano" target="_blank" rel="noopener"
+>Matano&lt;/a>): Open source serverless security lake platform on AWS that lets you ingest, store, and analyze petabytes of security data into an Apache Iceberg data lake and run realtime Python detections as code.&lt;/li>
+&lt;li>&lt;b>&lt;code>  2168⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   328🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/mozilla/MozDef" target="_blank" rel="noopener"
+>MozDef&lt;/a>) - Automates the security incident handling process and facilitate the real-time activities of incident handlers.&lt;/li>
+&lt;li>&lt;b>&lt;code>    43⭐&lt;/code>&lt;/b> &lt;b>&lt;code>     7🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/MutableSecurity/mutablesecurity" target="_blank" rel="noopener"
+>MutableSecurity&lt;/a>) - CLI program for automating the setup, configuration, and use of cybersecurity solutions.&lt;/li>
+&lt;li>&lt;b>&lt;code>   599⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   125🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/biggiesmallsAG/nightHawkResponse" target="_blank" rel="noopener"
+>nightHawk&lt;/a>) - Application built for asynchronous forensic data presentation using ElasticSearch as the backend. It&amp;rsquo;s designed to ingest Redline collections.&lt;/li>
+&lt;li>&lt;a class="link" href="http://sourceforge.net/projects/ocfa/" target="_blank" rel="noopener"
+>Open Computer Forensics Architecture&lt;/a> - Another popular distributed open-source computer forensics framework. This framework was built on Linux platform and uses postgreSQL database for storing data.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="osquery.io/" >osquery&lt;/a> - Easily ask questions about your Linux and macOS infrastructure using a SQL-like query language; the provided &lt;em>incident-response pack&lt;/em> helps you detect and respond to breaches.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="www.fireeye.com/services/freeware/redline.html" >Redline&lt;/a> - Provides host investigative capabilities to users to find signs of malicious activity through memory and file analysis, and the development of a threat assessment profile.&lt;/li>
+&lt;li>&lt;b>&lt;code>   333⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    43🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/zdhenard42/SOC-Multitool" target="_blank" rel="noopener"
+>SOC Multi-tool&lt;/a>) - A powerful and user-friendly browser extension that streamlines investigations for security professionals.&lt;/li>
+&lt;li>&lt;a class="link" href="http://www.sleuthkit.org" target="_blank" rel="noopener"
+>The Sleuth Kit &amp;amp; Autopsy&lt;/a> - Unix and Windows based tool which helps in forensic analysis of computers. It comes with various tools which helps in digital forensics. These tools help in analyzing disk images, performing in-depth analysis of file systems, and various other things.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="thehive-project.org/" >TheHive&lt;/a> - Scalable 3-in-1 open source and free solution designed to make life easier for SOCs, CSIRTs, CERTs and any information security practitioner dealing with security incidents that need to be investigated and acted upon swiftly.&lt;/li>
+&lt;li>&lt;b>&lt;code>  2926⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   484🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/Velocidex/velociraptor" target="_blank" rel="noopener"
+>Velociraptor&lt;/a>) - Endpoint visibility and collection tool&lt;/li>
+&lt;li>&lt;a class="link" href="http://www.x-ways.net/forensics/" target="_blank" rel="noopener"
+>X-Ways Forensics&lt;/a> - Forensics tool for Disk cloning and imaging. It can be used to find deleted files and disk analysis.&lt;/li>
+&lt;li>&lt;b>&lt;code>   749⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    82🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/zentralopensource/zentral" target="_blank" rel="noopener"
+>Zentral&lt;/a>) - Combines osquery&amp;rsquo;s powerful endpoint inventory features with a flexible notification and action framework. This enables one to identify and react to changes on OS X and Linux clients.&lt;/li>
+&lt;/ul>
+&lt;h3 id="books">Books
+&lt;/h3>&lt;ul>
+&lt;li>🌎 &lt;a class="link" href="www.amazon.com/Applied-Incident-Response-Steve-Anson/dp/1119560268/" >Applied Incident Response&lt;/a> - Steve Anson&amp;rsquo;s book on Incident Response.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="www.amazon.com/Art-Memory-Forensics-Detecting-Malware/dp/1118825098/" >Art of Memory Forensics&lt;/a> - Detecting Malware and Threats in Windows, Linux, and Mac Memory.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="www.amazon.com/Crafting-InfoSec-Playbook-Security-Monitoring/dp/1491949406" >Crafting the InfoSec Playbook: Security Monitoring and Incident Response Master Plan&lt;/a> - by Jeff Bollinger, Brandon Enright and Matthew Valites.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="www.amazon.com/Digital-Forensics-Incident-Response-techniques/dp/183864900X" >Digital Forensics and Incident Response: Incident response techniques and procedures to respond to modern cyber threats&lt;/a> - by Gerard Johansen.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="medium.com/@sroberts/introduction-to-dfir-d35d5de4c180/" >Introduction to DFIR&lt;/a> - By Scott J. Roberts.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="www.amazon.com/Incident-Response-Computer-Forensics-Third/dp/0071798684/" >Incident Response &amp;amp; Computer Forensics, Third Edition&lt;/a> - The definitive guide to incident response.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="www.amazon.com/Incident-Response-Techniques-Ransomware-Attacks/dp/180324044X" >Incident Response Techniques for Ransomware Attacks&lt;/a> - A great guide to build an incident response strategy for ransomware attacks. By Oleg Skulkin.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="www.amazon.com/Incident-response-Threat-Intelligence-intelligence-based/dp/1801072957" >Incident Response with Threat Intelligence&lt;/a> - Great reference to build an incident response plan based also on Threat Intelligence. By Roberto Martinez.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="www.amazon.com/Intelligence-Driven-Incident-Response-Outwitting-Adversary-ebook-dp-B074ZRN5T7/dp/B074ZRN5T7" >Intelligence-Driven Incident Response&lt;/a> - By Scott J. Roberts, Rebekah Brown.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="www.amazon.com/Operator-Handbook-Team-OSINT-Reference/dp/B085RR67H5/" >Operator Handbook: Red Team + OSINT + Blue Team Reference&lt;/a> - Great reference for incident responders.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="www.amazon.com/Practical-Memory-Forensics-Jumpstart-effective/dp/1801070334" >Practical Memory Forensics&lt;/a> - The definitive guide to practice memory forensics. By Svetlana Ostrovskaya and Oleg Skulkin.&lt;/li>
+&lt;li>&lt;a class="link" href="http://www.amazon.com/gp/product/1593275099" target="_blank" rel="noopener"
+>The Practice of Network Security Monitoring: Understanding Incident Detection and Response&lt;/a> - Richard Bejtlich&amp;rsquo;s book on IR.&lt;/li>
+&lt;/ul>
+&lt;h3 id="communities">Communities
+&lt;/h3>&lt;ul>
+&lt;li>🌎 &lt;a class="link" href="discordapp.com/invite/JUqe9Ek" >Digital Forensics Discord Server&lt;/a> - Community of 8,000+ working professionals from Law Enforcement, Private Sector, and Forensic Vendors. Additionally, plenty of students and hobbyists! Guide 🌎 &lt;a class="link" href="aboutdfir.com/a-beginners-guide-to-the-digital-forensics-discord-server/" >here&lt;/a>.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="dfircommunity.slack.com" >Slack DFIR channel&lt;/a> - Slack DFIR Communitiy channel - 🌎 &lt;a class="link" href="start.paloaltonetworks.com/join-our-slack-community" >Signup here&lt;/a>.&lt;/li>
+&lt;/ul>
+&lt;h3 id="disk-image-creation-tools">Disk Image Creation Tools
+&lt;/h3>&lt;ul>
+&lt;li>&lt;a class="link" href="http://accessdata.com/product-download/?/support/adownloads#FTKImager" target="_blank" rel="noopener"
+>AccessData FTK Imager&lt;/a> - Forensics tool whose main purpose is to preview recoverable data from a disk of any kind. FTK Imager can also acquire live memory and paging file on 32bit and 64bit systems.&lt;/li>
+&lt;li>&lt;b>&lt;code>   461⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   109🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/vitaly-kamluk/bitscout" target="_blank" rel="noopener"
+>Bitscout&lt;/a>) - Bitscout by Vitaly Kamluk helps you build your fully-trusted customizable LiveCD/LiveUSB image to be used for remote digital forensics (or perhaps any other task of your choice). It is meant to be transparent and monitorable by the owner of the system, forensically sound, customizable and compact.&lt;/li>
+&lt;li>&lt;a class="link" href="http://www.forensicimager.com/" target="_blank" rel="noopener"
+>GetData Forensic Imager&lt;/a> - Windows based program that will acquire, convert, or verify a forensic image in one of the following common forensic file formats.&lt;/li>
+&lt;li>&lt;a class="link" href="http://guymager.sourceforge.net" target="_blank" rel="noopener"
+>Guymager&lt;/a> - Free forensic imager for media acquisition on Linux.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="www.magnetforensics.com/magnet-acquire/" >Magnet ACQUIRE&lt;/a> - ACQUIRE by Magnet Forensics allows various types of disk acquisitions to be performed on Windows, Linux, and OS X as well as mobile operating systems.&lt;/li>
+&lt;/ul>
+&lt;h3 id="evidence-collection">Evidence Collection
+&lt;/h3>&lt;ul>
+&lt;li>&lt;b>&lt;code>    90⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    21🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/fox-it/acquire" target="_blank" rel="noopener"
+>Acquire&lt;/a>) - Acquire is a tool to quickly gather forensic artifacts from disk images or a live system into a lightweight container. This makes Acquire an excellent tool to, among others, speedup the process of digital forensic triage. It uses &lt;b>&lt;code>   914⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    64🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/fox-it/dissect" target="_blank" rel="noopener"
+>Dissect&lt;/a>) to gather that information from the raw disk, if possible.&lt;/li>
+&lt;li>&lt;b>&lt;code>   266⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    21🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/forensicanalysis/artifactcollector" target="_blank" rel="noopener"
+>artifactcollector&lt;/a>) - The artifactcollector project provides a software that collects forensic artifacts on systems.&lt;/li>
+&lt;li>&lt;b>&lt;code>  1098⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   186🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/simsong/bulk_extractor" target="_blank" rel="noopener"
+>bulk_extractor&lt;/a>) - Computer forensics tool that scans a disk image, a file, or a directory of files and extracts useful information without parsing the file system or file system structures. Because of ignoring the file system structure, the program distinguishes itself in terms of speed and thoroughness.&lt;/li>
+&lt;li>&lt;b>&lt;code>   332⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    50🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/rough007/CDQR" target="_blank" rel="noopener"
+>Cold Disk Quick Response&lt;/a>) - Streamlined list of parsers to quickly analyze a forensic image file (&lt;code>dd&lt;/code>, E01, &lt;code>.vmdk&lt;/code>, etc) and output nine reports.&lt;/li>
+&lt;li>&lt;b>&lt;code>   626⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    89🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/orlikoski/CyLR" target="_blank" rel="noopener"
+>CyLR&lt;/a>) - The CyLR tool collects forensic artifacts from hosts with NTFS file systems quickly, securely and minimizes impact to the host.&lt;/li>
+&lt;li>&lt;b>&lt;code>  1048⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   207🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/ForensicArtifacts/artifacts" target="_blank" rel="noopener"
+>Forensic Artifacts&lt;/a>) - Digital Forensics Artifact Repository&lt;/li>
+&lt;li>&lt;b>&lt;code>   462⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    95🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/diogo-fernan/ir-rescue" target="_blank" rel="noopener"
+>ir-rescue&lt;/a>) - Windows Batch script and a Unix Bash script to comprehensively collect host forensic data during incident response.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="www.brimorlabs.com/tools/" >Live Response Collection&lt;/a> - Automated tool that collects volatile data from Windows, OSX, and *nix based operating systems.&lt;/li>
+&lt;li>&lt;b>&lt;code>   240⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    50🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/ThreatResponse/margaritashotgun" target="_blank" rel="noopener"
+>Margarita Shotgun&lt;/a>) - Command line utility (that works with or without Amazon EC2 instances) to parallelize remote memory acquisition.&lt;/li>
+&lt;li>&lt;b>&lt;code>    37⭐&lt;/code>&lt;/b> &lt;b>&lt;code>     3🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/alpine-sec/SPECTR3" target="_blank" rel="noopener"
+>SPECTR3&lt;/a>) - Acquire, triage and investigate remote evidence via portable iSCSI readonly access&lt;/li>
+&lt;li>&lt;b>&lt;code>   760⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   119🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/tclahr/uac" target="_blank" rel="noopener"
+>UAC&lt;/a>) - UAC (Unix-like Artifacts Collector) is a Live Response collection script for Incident Response that makes use of native binaries and tools to automate the collection of AIX, Android, ESXi, FreeBSD, Linux, macOS, NetBSD, NetScaler, OpenBSD and Solaris systems artifacts.&lt;/li>
+&lt;/ul>
+&lt;h3 id="incident-management">Incident Management
+&lt;/h3>&lt;ul>
+&lt;li>&lt;b>&lt;code>   339⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    37🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/SecurityBrewery/catalyst" target="_blank" rel="noopener"
+>Catalyst&lt;/a>) - A free SOAR system that helps to automate alert handling and incident response processes.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="www.cybercpr.com" >CyberCPR&lt;/a> - Community and commercial incident management tool with Need-to-Know built in to support GDPR compliance while handling sensitive incidents.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="medevel.com/cyphon/" >Cyphon&lt;/a> - Cyphon eliminates the headaches of incident management by streamlining a multitude of related tasks through a single platform. It receives, processes and triages events to provide an all-encompassing solution for your analytic workflow — aggregating data, bundling and prioritizing alerts, and empowering analysts to investigate and document incidents.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="www.paloaltonetworks.com/cortex/xsoar" >CORTEX XSOAR&lt;/a> - Paloalto security orchestration, automation and response platform with full Incident lifecycle management and many integrations to enhance automations.&lt;/li>
+&lt;li>&lt;b>&lt;code>   294⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    72🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/log2timeline/dftimewolf" target="_blank" rel="noopener"
+>DFTimewolf&lt;/a>) - A framework for orchestrating forensic collection, processing and data export.&lt;/li>
+&lt;li>&lt;b>&lt;code>   482⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    73🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/dfirtrack/dfirtrack" target="_blank" rel="noopener"
+>DFIRTrack&lt;/a>) - Incident Response tracking application handling one or more incidents via cases and tasks with a lot of affected systems and artifacts.&lt;/li>
+&lt;li>&lt;b>&lt;code>     ?⭐&lt;/code>&lt;/b> &lt;b>&lt;code>     ?🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/certsocietegenerale/FIR/" target="_blank" rel="noopener"
+>Fast Incident Response (FIR)&lt;/a>) - Cybersecurity incident management platform designed with agility and speed in mind. It allows for easy creation, tracking, and reporting of cybersecurity incidents and is useful for CSIRTs, CERTs and SOCs alike.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="www.bestpractical.com/rtir/" >RTIR&lt;/a> - Request Tracker for Incident Response (RTIR) is the premier open source incident handling system targeted for computer security teams. We worked with over a dozen CERT and CSIRT teams around the world to help you handle the ever-increasing volume of incident reports. RTIR builds on all the features of Request Tracker.&lt;/li>
+&lt;li>&lt;b>&lt;code>   245⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    48🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/sandialabs/scot" target="_blank" rel="noopener"
+>Sandia Cyber Omni Tracker (SCOT)&lt;/a>) - Incident Response collaboration and knowledge capture tool focused on flexibility and ease of use. Our goal is to add value to the incident response process without burdening the user.&lt;/li>
+&lt;li>&lt;b>&lt;code>  1715⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   334🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/frikky/Shuffle" target="_blank" rel="noopener"
+>Shuffle&lt;/a>) - A general purpose security automation platform focused on accessibility.&lt;/li>
+&lt;li>&lt;b>&lt;code>   422⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    97🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/defpoint/threat_note" target="_blank" rel="noopener"
+>threat_note&lt;/a>) - Lightweight investigation notebook that allows security researchers the ability to register and retrieve indicators related to their research.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="www.zenduty.com" >Zenduty&lt;/a> - Zenduty is a novel incident management platform providing end-to-end incident alerting, on-call management and response orchestration, giving teams greater control and automation over the incident management lifecycle.&lt;/li>
+&lt;/ul>
+&lt;h3 id="knowledge-bases">Knowledge Bases
+&lt;/h3>&lt;ul>
+&lt;li>&lt;b>&lt;code>    71⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    15🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/ForensicArtifacts/artifacts-kb" target="_blank" rel="noopener"
+>Digital Forensics Artifact Knowledge Base&lt;/a>) - Digital Forensics Artifact Knowledge Base&lt;/li>
+&lt;li>&lt;b>&lt;code>  2226⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   398🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/sbousseaden/EVTX-ATTACK-SAMPLES" target="_blank" rel="noopener"
+>Windows Events Attack Samples&lt;/a>) - Windows Events Attack Samples&lt;/li>
+&lt;li>&lt;b>&lt;code>   158⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    20🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/libyal/winreg-kb" target="_blank" rel="noopener"
+>Windows Registry Knowledge Base&lt;/a>) - Windows Registry Knowledge Base&lt;/li>
+&lt;/ul>
+&lt;h3 id="linux-distributions">Linux Distributions
+&lt;/h3>&lt;ul>
+&lt;li>🌎 &lt;a class="link" href="forensics.cert.org/#ADIA" >The Appliance for Digital Investigation and Analysis (ADIA)&lt;/a> - VMware-based appliance used for digital investigation and acquisition and is built entirely from public domain software. Among the tools contained in ADIA are Autopsy, the Sleuth Kit, the Digital Forensics Framework, log2timeline, Xplico, and Wireshark. Most of the system maintenance uses Webmin. It is designed for small-to-medium sized digital investigations and acquisitions. The appliance runs under Linux, Windows, and Mac OS. Both i386 (32-bit) and x86_64 (64-bit) versions are available.&lt;/li>
+&lt;li>&lt;a class="link" href="http://www.caine-live.net/index.html" target="_blank" rel="noopener"
+>Computer Aided Investigative Environment (CAINE)&lt;/a> - Contains numerous tools that help investigators during their analysis, including forensic evidence collection.&lt;/li>
+&lt;li>&lt;b>&lt;code>   491⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    70🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/rough007/CCF-VM" target="_blank" rel="noopener"
+>CCF-VM&lt;/a>) - CyLR CDQR Forensics Virtual Machine (CCF-VM): An all-in-one solution to parsing collected data, making it easily searchable with built-in common searches, enable searching of single and multiple hosts simultaneously.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="sourceforge.net/projects/nst/files/latest/download?source=files" >NST - Network Security Toolkit&lt;/a> - Linux distribution that includes a vast collection of best-of-breed open source network security applications useful to the network security professional.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="sumuri.com/software/paladin/" >PALADIN&lt;/a> - Modified Linux distribution to perform various forensics task in a forensically sound manner. It comes with many open source forensics tools included.&lt;/li>
+&lt;li>&lt;b>&lt;code>  3068⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   522🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/Security-Onion-Solutions/security-onion" target="_blank" rel="noopener"
+>Security Onion&lt;/a>) - Special Linux distro aimed at network security monitoring featuring advanced analysis tools.&lt;/li>
+&lt;li>&lt;a class="link" href="http://digital-forensics.sans.org/community/downloads" target="_blank" rel="noopener"
+>SANS Investigative Forensic Toolkit (SIFT) Workstation&lt;/a> - Demonstrates that advanced incident response capabilities and deep dive digital forensic techniques to intrusions can be accomplished using cutting-edge open-source tools that are freely available and frequently updated.&lt;/li>
+&lt;/ul>
+&lt;h3 id="linux-evidence-collection">Linux Evidence Collection
+&lt;/h3>&lt;ul>
+&lt;li>&lt;b>&lt;code>   172⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    42🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/SekoiaLab/Fastir_Collector_Linux" target="_blank" rel="noopener"
+>FastIR Collector Linux&lt;/a>) - FastIR for Linux collects different artifacts on live Linux and records the results in CSV files.&lt;/li>
+&lt;li>&lt;b>&lt;code>   149⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    17🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/MagnetForensics/dumpit-linux" target="_blank" rel="noopener"
+>MAGNET DumpIt&lt;/a>) - Fast memory acquisition open source tool for Linux written in Rust. Generate full memory crash dumps of Linux machines.&lt;/li>
+&lt;/ul>
+&lt;h3 id="log-analysis-tools">Log Analysis Tools
+&lt;/h3>&lt;ul>
+&lt;li>&lt;b>&lt;code>   195⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    26🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/mbevilacqua/appcompatprocessor" target="_blank" rel="noopener"
+>AppCompatProcessor&lt;/a>) - AppCompatProcessor has been designed to extract additional value from enterprise-wide AppCompat / AmCache data beyond the classic stacking and grepping techniques.&lt;/li>
+&lt;li>&lt;b>&lt;code>  1241⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   238🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/ahmedkhlief/APT-Hunter" target="_blank" rel="noopener"
+>APT Hunter&lt;/a>) - APT-Hunter is Threat Hunting tool for windows event logs.&lt;/li>
+&lt;li>&lt;b>&lt;code>  2777⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   251🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/countercept/chainsaw" target="_blank" rel="noopener"
+>Chainsaw&lt;/a>) - Chainsaw provides a powerful ‘first-response’ capability to quickly identify threats within Windows event logs.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="eventlogxp.com/" >Event Log Explorer&lt;/a> - Tool developed to quickly analyze log files and other data.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="lizard-labs.com/event_log_observer.aspx" >Event Log Observer&lt;/a> - View, analyze and monitor events recorded in Microsoft Windows event logs with this GUI tool.&lt;/li>
+&lt;li>&lt;b>&lt;code>  2260⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   200🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/Yamato-Security/hayabusa" target="_blank" rel="noopener"
+>Hayabusa&lt;/a>) - Hayabusa is a Windows event log fast forensics timeline generator and threat hunting tool created by the Yamato Security group in Japan.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="support.kaspersky.com/13850" >Kaspersky CyberTrace&lt;/a> - Threat intelligence fusion and analysis tool that integrates threat data feeds with SIEM solutions. Users can immediately leverage threat intelligence for security monitoring and incident report (IR) activities in the workflow of their existing security operations.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="lizard-labs.com/log_parser_lizard.aspx" >Log Parser Lizard&lt;/a> - Execute SQL queries against structured log data: server logs, Windows Events, file system, Active Directory, log4net logs, comma/tab separated text, XML or JSON files. Also provides a GUI to Microsoft LogParser 2.2 with powerful UI elements: syntax editor, data grid, chart, pivot table, dashboard, query manager and more.&lt;/li>
+&lt;li>&lt;b>&lt;code>   209⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    50🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/jensvoid/lorg" target="_blank" rel="noopener"
+>Lorg&lt;/a>) - Tool for advanced HTTPD logfile security analysis and forensics.&lt;/li>
+&lt;li>&lt;b>&lt;code>   147⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    23🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/dogoncouch/logdissect" target="_blank" rel="noopener"
+>Logdissect&lt;/a>) - CLI utility and Python API for analyzing log files and other data.&lt;/li>
+&lt;li>&lt;b>&lt;code>  2717⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   442🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/JPCERTCC/LogonTracer" target="_blank" rel="noopener"
+>LogonTracer&lt;/a>) - Tool to investigate malicious Windows logon by visualizing and analyzing Windows event log.&lt;/li>
+&lt;li>&lt;b>&lt;code>  8261⭐&lt;/code>&lt;/b> &lt;b>&lt;code>  2179🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/SigmaHQ/sigma" target="_blank" rel="noopener"
+>Sigma&lt;/a>) - Generic signature format for SIEM systems already containing an extensive ruleset.&lt;/li>
+&lt;li>&lt;b>&lt;code>  2854⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   332🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/airbnb/streamalert" target="_blank" rel="noopener"
+>StreamAlert&lt;/a>) - Serverless, real-time log data analysis framework, capable of ingesting custom data sources and triggering alerts using user-defined logic.&lt;/li>
+&lt;li>&lt;b>&lt;code>   418⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    58🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/JPCERTCC/SysmonSearch" target="_blank" rel="noopener"
+>SysmonSearch&lt;/a>) - SysmonSearch makes Windows event log analysis more effective and less time consuming by aggregation of event logs.&lt;/li>
+&lt;li>&lt;b>&lt;code>   763⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    81🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/Yamato-Security/WELA" target="_blank" rel="noopener"
+>WELA&lt;/a>) - Windows Event Log Analyzer aims to be the Swiss Army knife for Windows event logs.&lt;/li>
+&lt;li>&lt;b>&lt;code>   671⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    91🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/wagga40/Zircolite" target="_blank" rel="noopener"
+>Zircolite&lt;/a>) - A standalone and fast SIGMA-based detection tool for EVTX or JSON.&lt;/li>
+&lt;/ul>
+&lt;h3 id="memory-analysis-tools">Memory Analysis Tools
+&lt;/h3>&lt;ul>
+&lt;li>&lt;b>&lt;code>   861⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    78🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/microsoft/avml" target="_blank" rel="noopener"
+>AVML&lt;/a>) - A portable volatile memory acquisition tool for Linux.&lt;/li>
+&lt;li>&lt;b>&lt;code>   259⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    42🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/JamesHabben/evolve" target="_blank" rel="noopener"
+>Evolve&lt;/a>) - Web interface for the Volatility Memory Forensics Framework.&lt;/li>
+&lt;li>&lt;b>&lt;code>   278⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    57🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/ShaneK2/inVtero.net" target="_blank" rel="noopener"
+>inVtero.net&lt;/a>) - Advanced memory analysis for Windows x64 with nested hypervisor support.&lt;/li>
+&lt;li>&lt;b>&lt;code>  1710⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   339🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/504ensicsLabs/LiME" target="_blank" rel="noopener"
+>LiME&lt;/a>) - Loadable Kernel Module (LKM), which allows the acquisition of volatile memory from Linux and Linux-based devices, formerly called DMD.&lt;/li>
+&lt;li>&lt;b>&lt;code>   481⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    67🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/JPCERTCC/MalConfScan" target="_blank" rel="noopener"
+>MalConfScan&lt;/a>) - MalConfScan is a Volatility plugin extracts configuration data of known malware. Volatility is an open-source memory forensics framework for incident response and malware analysis. This tool searches for malware in memory images and dumps configuration data. In addition, this tool has a function to list strings to which malicious code refers.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="www.fireeye.com/services/freeware/memoryze.html" >Memoryze&lt;/a> - Free memory forensic software that helps incident responders find evil in live memory. Memoryze can acquire and/or analyze memory images, and on live systems, can include the paging file in its analysis.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="www.fireeye.com/services/freeware/memoryze.html" >Memoryze for Mac&lt;/a> - Memoryze for Mac is Memoryze but then for Macs. A lower number of features, however.&lt;/li>
+&lt;li>[MemProcFS] (&lt;a class="link" href="https://github.com/ufrisk/MemProcFS" target="_blank" rel="noopener"
+>https://github.com/ufrisk/MemProcFS&lt;/a>) - MemProcFS is an easy and convenient way of viewing physical memory as files in a virtual file system.&lt;/li>
+&lt;li>&lt;b>&lt;code>   220⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    19🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/LDO-CERT/orochi" target="_blank" rel="noopener"
+>Orochi&lt;/a>) - Orochi is an open source framework for collaborative forensic memory dump analysis.&lt;/li>
+&lt;li>&lt;a class="link" href="http://www.rekall-forensic.com/" target="_blank" rel="noopener"
+>Rekall&lt;/a> - Open source tool (and library) for the extraction of digital artifacts from volatile memory (RAM) samples.&lt;/li>
+&lt;li>&lt;b>&lt;code>  7262⭐&lt;/code>&lt;/b> &lt;b>&lt;code>  1276🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/volatilityfoundation/volatility" target="_blank" rel="noopener"
+>Volatility&lt;/a>) - Advanced memory forensics framework.&lt;/li>
+&lt;li>&lt;b>&lt;code>  2612⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   447🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/volatilityfoundation/volatility3" target="_blank" rel="noopener"
+>Volatility 3&lt;/a>) - The volatile memory extraction framework (successor of Volatility)&lt;/li>
+&lt;li>&lt;b>&lt;code>   263⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    59🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/mkorman90/VolatilityBot" target="_blank" rel="noopener"
+>VolatilityBot&lt;/a>) - Automation tool for researchers cuts all the guesswork and manual tasks out of the binary extraction phase, or to help the investigator in the first steps of performing a memory analysis investigation.&lt;/li>
+&lt;li>&lt;b>&lt;code>   192⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    50🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/aim4r/VolDiff" target="_blank" rel="noopener"
+>VolDiff&lt;/a>) - Malware Memory Footprint Analysis based on Volatility.&lt;/li>
+&lt;li>&lt;a class="link" href="http://www.windowsscope.com/windowsscope-cyber-forensics/" target="_blank" rel="noopener"
+>WindowsSCOPE&lt;/a> - Memory forensics and reverse engineering tool used for analyzing volatile memory offering the capability of analyzing the Windows kernel, drivers, DLLs, and virtual and physical memory.&lt;/li>
+&lt;/ul>
+&lt;h3 id="memory-imaging-tools">Memory Imaging Tools
+&lt;/h3>&lt;ul>
+&lt;li>&lt;a class="link" href="http://belkasoft.com/ram-capturer" target="_blank" rel="noopener"
+>Belkasoft Live RAM Capturer&lt;/a> - Tiny free forensic tool to reliably extract the entire content of the computer’s volatile memory – even if protected by an active anti-debugging or anti-dumping system.&lt;/li>
+&lt;li>&lt;b>&lt;code>     ?⭐&lt;/code>&lt;/b> &lt;b>&lt;code>     ?🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/halpomeranz/lmg/" target="_blank" rel="noopener"
+>Linux Memory Grabber&lt;/a>) - Script for dumping Linux memory and creating Volatility profiles.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="www.magnetforensics.com/resources/magnet-dumpit-for-windows" >MAGNET DumpIt&lt;/a> - Fast memory acquisition tool for Windows (x86, x64, ARM64). Generate full memory crash dumps of Windows machines.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="www.magnetforensics.com/free-tool-magnet-ram-capture/" >Magnet RAM Capture&lt;/a> - Free imaging tool designed to capture the physical memory of a suspect’s computer. Supports recent versions of Windows.&lt;/li>
+&lt;li>&lt;a class="link" href="http://www.osforensics.com/" target="_blank" rel="noopener"
+>OSForensics&lt;/a> - Tool to acquire live memory on 32-bit and 64-bit systems. A dump of an individual process’s memory space or physical memory dump can be done.&lt;/li>
+&lt;/ul>
+&lt;h3 id="osx-evidence-collection">OSX Evidence Collection
+&lt;/h3>&lt;ul>
+&lt;li>🌎 &lt;a class="link" href="objective-see.com/products/knockknock.html" >Knockknock&lt;/a> - Displays persistent items(scripts, commands, binaries, etc.) that are set to execute automatically on OSX.&lt;/li>
+&lt;li>&lt;b>&lt;code>   774⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   100🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/ydkhatri/mac_apt" target="_blank" rel="noopener"
+>macOS Artifact Parsing Tool (mac_apt)&lt;/a>) - Plugin based forensics framework for quick mac triage that works on live machines, disk images or individual artifact files.&lt;/li>
+&lt;li>&lt;b>&lt;code>  3128⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   280🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/jipegit/OSXAuditor" target="_blank" rel="noopener"
+>OSX Auditor&lt;/a>) - Free Mac OS X computer forensics tool.&lt;/li>
+&lt;li>&lt;b>&lt;code>  1874⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   242🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/yelp/osxcollector" target="_blank" rel="noopener"
+>OSX Collector&lt;/a>) - OSX Auditor offshoot for live response.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="themittenmac.com/the-esf-playground/" >The ESF Playground&lt;/a> - A tool to view the events in Apple Endpoint Security Framework (ESF) in real time.&lt;/li>
+&lt;/ul>
+&lt;h3 id="other-lists">Other Lists
+&lt;/h3>&lt;ul>
+&lt;li>&lt;b>&lt;code>   580⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    84🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/stuhli/awesome-event-ids" target="_blank" rel="noopener"
+>Awesome Event IDs&lt;/a>) - Collection of Event ID resources useful for Digital Forensics and Incident Response.&lt;/li>
+&lt;li>&lt;b>&lt;code>  3941⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   620🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/cugu/awesome-forensics" target="_blank" rel="noopener"
+>Awesome Forensics&lt;/a>) - A curated list of awesome forensic analysis tools and resources.&lt;/li>
+&lt;li>&lt;b>&lt;code>  1986⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   523🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/DidierStevens/DidierStevensSuite" target="_blank" rel="noopener"
+>Didier Stevens Suite&lt;/a>) - Tool collection&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="ericzimmerman.github.io/" >Eric Zimmerman Tools&lt;/a> - An updated list of forensic tools created by Eric Zimmerman, an instructor for SANS institute.&lt;/li>
+&lt;li>&lt;b>&lt;code>   883⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   134🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/deralexxx/security-apis" target="_blank" rel="noopener"
+>List of various Security APIs&lt;/a>) - Collective list of public JSON APIs for use in security.&lt;/li>
+&lt;/ul>
+&lt;h3 id="other-tools">Other Tools
+&lt;/h3>&lt;ul>
+&lt;li>🌎 &lt;a class="link" href="thehive-project.org" >Cortex&lt;/a> - Cortex allows you to analyze observables such as IP and email addresses, URLs, domain names, files or hashes one by one or in bulk mode using a Web interface. Analysts can also automate these operations using its REST API.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="crits.github.io/" >Crits&lt;/a> - Web-based tool which combines an analytic engine with a cyber threat database.&lt;/li>
+&lt;li>&lt;b>&lt;code>   634⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    59🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/Netflix-Skunkworks/diffy" target="_blank" rel="noopener"
+>Diffy&lt;/a>) - DFIR tool developed by Netflix&amp;rsquo;s SIRT that allows an investigator to quickly scope a compromise across cloud instances (Linux instances on AWS, currently) during an incident and efficiently triaging those instances for followup actions by showing differences against a baseline.&lt;/li>
+&lt;li>&lt;b>&lt;code>    23⭐&lt;/code>&lt;/b> &lt;b>&lt;code>     3🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/diogo-fernan/domfind" target="_blank" rel="noopener"
+>domfind&lt;/a>) - Python DNS crawler for finding identical domain names under different TLDs.&lt;/li>
+&lt;li>&lt;b>&lt;code>   118⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    25🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/keithjjones/fileintel" target="_blank" rel="noopener"
+>Fileintel&lt;/a>) - Pull intelligence per file hash.&lt;/li>
+&lt;li>&lt;b>&lt;code>  3759⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   682🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/Cyb3rWard0g/HELK" target="_blank" rel="noopener"
+>HELK&lt;/a>) - Threat Hunting platform.&lt;/li>
+&lt;li>&lt;b>&lt;code>  1076⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   141🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/obsidianforensics/hindsight" target="_blank" rel="noopener"
+>Hindsight&lt;/a>) - Internet history forensics for Google Chrome/Chromium.&lt;/li>
+&lt;li>&lt;b>&lt;code>   262⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    51🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/keithjjones/hostintel" target="_blank" rel="noopener"
+>Hostintel&lt;/a>) - Pull intelligence per host.&lt;/li>
+&lt;li>&lt;b>&lt;code>   118⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    36🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/ralphje/imagemounter" target="_blank" rel="noopener"
+>imagemounter&lt;/a>) - Command line utility and Python package to ease the (un)mounting of forensic disk images.&lt;/li>
+&lt;li>&lt;b>&lt;code>     ?⭐&lt;/code>&lt;/b> &lt;b>&lt;code>     ?🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/davehull/Kansa/" target="_blank" rel="noopener"
+>Kansa&lt;/a>) - Modular incident response framework in PowerShell.&lt;/li>
+&lt;li>&lt;b>&lt;code>   291⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    32🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/kacos2000/MFT_Browser" target="_blank" rel="noopener"
+>MFT Browser&lt;/a>) - MFT directory tree reconstruction &amp;amp; record info.&lt;/li>
+&lt;li>&lt;b>&lt;code>   809⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   147🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/Neo23x0/munin" target="_blank" rel="noopener"
+>Munin&lt;/a>) - Online hash checker for VirusTotal and other services.&lt;/li>
+&lt;li>&lt;b>&lt;code>    38⭐&lt;/code>&lt;/b> &lt;b>&lt;code>     6🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/swisscom/PowerSponse" target="_blank" rel="noopener"
+>PowerSponse&lt;/a>) - PowerSponse is a PowerShell module focused on targeted containment and remediation during security incident response.&lt;/li>
+&lt;li>&lt;b>&lt;code>    26⭐&lt;/code>&lt;/b> &lt;b>&lt;code>     4🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/nogoodconfig/pyarascanner" target="_blank" rel="noopener"
+>PyaraScanner&lt;/a>) - Very simple multi-threaded many-rules to many-files YARA scanning Python script for malware zoos and IR.&lt;/li>
+&lt;li>&lt;b>&lt;code>   237⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    53🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/rastrea2r/rastrea2r" target="_blank" rel="noopener"
+>rastrea2r&lt;/a>) - Allows one to scan disks and memory for IOCs using YARA on Windows, Linux and OS X.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="raqet.github.io/" >RaQet&lt;/a> - Unconventional remote acquisition and triaging tool that allows triage a disk of a remote computer (client) that is restarted with a purposely built forensic operating system.&lt;/li>
+&lt;li>&lt;b>&lt;code>   945⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   122🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/Neo23x0/Raccine" target="_blank" rel="noopener"
+>Raccine&lt;/a>) - A Simple Ransomware Protection&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="www.percona.com/doc/percona-toolkit/2.2/pt-stalk.html" >Stalk&lt;/a> - Collect forensic data about MySQL when problems occur.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="nccgroup.github.io/Scout2/" >Scout2&lt;/a> - Security tool that lets Amazon Web Services administrators assess their environment&amp;rsquo;s security posture.&lt;/li>
+&lt;li>&lt;b>&lt;code>  1787⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   237🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/google/stenographer" target="_blank" rel="noopener"
+>Stenographer&lt;/a>) - Packet capture solution which aims to quickly spool all packets to disk, then provide simple, fast access to subsets of those packets. It stores as much history as it possible, managing disk usage, and deleting when disk limits are hit. It&amp;rsquo;s ideal for capturing the traffic just before and during an incident, without the need explicit need to store all of the network traffic.&lt;/li>
+&lt;li>&lt;b>&lt;code>     ?⭐&lt;/code>&lt;/b> &lt;b>&lt;code>     ?🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/0x4d31/sqhunter" target="_blank" rel="noopener"
+>sqhunter&lt;/a>) - Threat hunter based on osquery and Salt Open (SaltStack) that can issue ad-hoc or distributed queries without the need for osquery&amp;rsquo;s tls plugin. sqhunter allows you to query open network sockets and check them against threat intelligence sources.&lt;/li>
+&lt;li>&lt;b>&lt;code>  4774⭐&lt;/code>&lt;/b> &lt;b>&lt;code>  1702🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/SwiftOnSecurity/sysmon-config" target="_blank" rel="noopener"
+>sysmon-config&lt;/a>) - Sysmon configuration file template with default high-quality event tracing&lt;/li>
+&lt;li>&lt;b>&lt;code>  2642⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   588🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/olafhartong/sysmon-modular" target="_blank" rel="noopener"
+>sysmon-modular&lt;/a>) - A repository of sysmon configuration modules&lt;/li>
+&lt;li>&lt;b>&lt;code>    37⭐&lt;/code>&lt;/b> &lt;b>&lt;code>     9🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/CIRCL/traceroute-circl" target="_blank" rel="noopener"
+>traceroute-circl&lt;/a>) - Extended traceroute to support the activities of CSIRT (or CERT) operators. Usually CSIRT team have to handle incidents based on IP addresses received. Created by Computer Emergency Response Center Luxembourg.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="www.raymond.cc/blog/xray/" >X-Ray 2.0&lt;/a> - Windows utility (poorly maintained or no longer maintained) to submit virus samples to AV vendors.&lt;/li>
+&lt;/ul>
+&lt;h3 id="playbooks">Playbooks
+&lt;/h3>&lt;ul>
+&lt;li>&lt;b>&lt;code>   915⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   187🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/aws-samples/aws-incident-response-runbooks/tree/0d9a1c0f7ad68fb2c1b2d86be8914f2069492e21" target="_blank" rel="noopener"
+>AWS Incident Response Runbook Samples&lt;/a>) - AWS IR Runbook Samples meant to be customized per each entity using them. The three samples are: &amp;ldquo;DoS or DDoS attack&amp;rdquo;, &amp;ldquo;credential leakage&amp;rdquo;, and &amp;ldquo;unintended access to an Amazon S3 bucket&amp;rdquo;.&lt;/li>
+&lt;li>&lt;b>&lt;code>   638⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   222🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/counteractive/incident-response-plan-template/tree/master/playbooks" target="_blank" rel="noopener"
+>Counteractive Playbooks&lt;/a>) - Counteractive PLaybooks collection.&lt;/li>
+&lt;li>&lt;b>&lt;code>   359⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    63🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/guardsight/gsvsoc_cirt-playbook-battle-cards" target="_blank" rel="noopener"
+>GuardSIght Playbook Battle Cards&lt;/a>) - A collection of Cyber Incident Response Playbook Battle Cards&lt;/li>
+&lt;li>&lt;b>&lt;code>   940⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   154🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/certsocietegenerale/IRM" target="_blank" rel="noopener"
+>IRM&lt;/a>) - Incident Response Methodologies by CERT Societe Generale.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="response.pagerduty.com/" >PagerDuty Incident Response Documentation&lt;/a> - Documents that describe parts of the PagerDuty Incident Response process. It provides information not only on preparing for an incident, but also what to do during and after. Source is available on &lt;b>&lt;code>  1018⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   223🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/PagerDuty/incident-response-docs" target="_blank" rel="noopener"
+>GitHub&lt;/a>).&lt;/li>
+&lt;li>&lt;b>&lt;code>   469⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   199🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/phantomcyber/playbooks" target="_blank" rel="noopener"
+>Phantom Community Playbooks&lt;/a>) - Phantom Community Playbooks for Splunk but also customizable for other use.&lt;/li>
+&lt;li>&lt;b>&lt;code>  4002⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   806🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/OTRF/ThreatHunter-Playbook" target="_blank" rel="noopener"
+>ThreatHunter-Playbook&lt;/a>) - Playbook to aid the development of techniques and hypothesis for hunting campaigns.&lt;/li>
+&lt;/ul>
+&lt;h3 id="process-dump-tools">Process Dump Tools
+&lt;/h3>&lt;ul>
+&lt;li>🌎 &lt;a class="link" href="docs.microsoft.com/en-us/sysinternals/downloads/procdump" >Microsoft ProcDump&lt;/a> - Dumps any running Win32 processes memory image on the fly.&lt;/li>
+&lt;li>&lt;a class="link" href="http://www.ntsecurity.nu/toolbox/pmdump/" target="_blank" rel="noopener"
+>PMDump&lt;/a> - Tool that lets you dump the memory contents of a process to a file without stopping the process.&lt;/li>
+&lt;/ul>
+&lt;h3 id="sandboxingreversing-tools">Sandboxing/Reversing Tools
+&lt;/h3>&lt;ul>
+&lt;li>🌎 &lt;a class="link" href="app.any.run/" >Any Run&lt;/a> - Interactive online malware analysis service for dynamic and static research of most types of threats using any environment.&lt;/li>
+&lt;li>&lt;b>&lt;code>  4741⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   551🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/mandiant/capa" target="_blank" rel="noopener"
+>CAPA&lt;/a>) - detects capabilities in executable files. You run it against a PE, ELF, .NET module, or shellcode file and it tells you what it thinks the program can do.&lt;/li>
+&lt;li>&lt;b>&lt;code>  1948⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   415🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/kevoreilly/CAPEv2" target="_blank" rel="noopener"
+>CAPEv2&lt;/a>) - Malware Configuration And Payload Extraction.&lt;/li>
+&lt;li>&lt;b>&lt;code>  5544⭐&lt;/code>&lt;/b> &lt;b>&lt;code>  1705🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/cuckoosandbox/cuckoo" target="_blank" rel="noopener"
+>Cuckoo&lt;/a>) - Open Source Highly configurable sandboxing tool.&lt;/li>
+&lt;li>&lt;b>&lt;code>   394⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   178🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/spender-sandbox/cuckoo-modified" target="_blank" rel="noopener"
+>Cuckoo-modified&lt;/a>) - Heavily modified Cuckoo fork developed by community.&lt;/li>
+&lt;li>&lt;b>&lt;code>    21⭐&lt;/code>&lt;/b> &lt;b>&lt;code>     7🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/keithjjones/cuckoo-modified-api" target="_blank" rel="noopener"
+>Cuckoo-modified-api&lt;/a>) - Python library to control a cuckoo-modified sandbox.&lt;/li>
+&lt;li>&lt;b>&lt;code> 15783⭐&lt;/code>&lt;/b> &lt;b>&lt;code>  1148🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/rizinorg/cutter" target="_blank" rel="noopener"
+>Cutter&lt;/a>) - Free and Open Source Reverse Engineering Platform powered by rizin.&lt;/li>
+&lt;li>&lt;b>&lt;code> 51189⭐&lt;/code>&lt;/b> &lt;b>&lt;code>  5831🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/NationalSecurityAgency/ghidra" target="_blank" rel="noopener"
+>Ghidra&lt;/a>) - Software Reverse Engineering Framework.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="www.hybrid-analysis.com/" >Hybrid-Analysis&lt;/a> - Free powerful online sandbox by CrowdStrike.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="analyze.intezer.com/#/" >Intezer&lt;/a> - Intezer Analyze dives into Windows binaries to detect micro-code similarities to known threats, in order to provide accurate yet easy-to-understand results.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="www.joesandbox.com/" >Joe Sandbox (Community)&lt;/a> - Joe Sandbox detects and analyzes potential malicious files and URLs on Windows, Android, Mac OS, Linux, and iOS for suspicious activities; providing comprehensive and detailed analysis reports.&lt;/li>
+&lt;li>&lt;b>&lt;code>   175⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    40🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/KoreLogicSecurity/mastiff" target="_blank" rel="noopener"
+>Mastiff&lt;/a>) - Static analysis framework that automates the process of extracting key characteristics from a number of different file formats.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="www.metadefender.com" >Metadefender Cloud&lt;/a> - Free threat intelligence platform providing multiscanning, data sanitization and vulnerability assessment of files.&lt;/li>
+&lt;li>&lt;b>&lt;code> 20569⭐&lt;/code>&lt;/b> &lt;b>&lt;code>  2992🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/radareorg/radare2" target="_blank" rel="noopener"
+>Radare2&lt;/a>) - Reverse engineering framework and command-line toolset.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="www.reverse.it/" >Reverse.IT&lt;/a> - Alternative domain for the Hybrid-Analysis tool provided by CrowdStrike.&lt;/li>
+&lt;li>&lt;b>&lt;code>  2681⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   361🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/rizinorg/rizin" target="_blank" rel="noopener"
+>Rizin&lt;/a>) - UNIX-like reverse engineering framework and command-line toolset&lt;/li>
+&lt;li>&lt;b>&lt;code>   675⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   125🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/fireeye/stringsifter" target="_blank" rel="noopener"
+>StringSifter&lt;/a>) - A machine learning tool that ranks strings based on their relevance for malware analysis.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="app.threat.zone" >Threat.Zone&lt;/a> - Cloud based threat analysis platform which include sandbox, CDR and interactive analysis for researchers.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="valkyrie.comodo.com" >Valkyrie Comodo&lt;/a> - Valkyrie uses run-time behavior and hundreds of features from a file to perform analysis.&lt;/li>
+&lt;li>&lt;b>&lt;code>  1539⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   351🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/viper-framework/viper" target="_blank" rel="noopener"
+>Viper&lt;/a>) - Python based binary analysis and management framework, that works well with Cuckoo and YARA.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="www.virustotal.com" >Virustotal&lt;/a> - Free online service that analyzes files and URLs enabling the identification of viruses, worms, trojans and other kinds of malicious content detected by antivirus engines and website scanners.&lt;/li>
+&lt;li>&lt;b>&lt;code>   137⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    30🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/keithjjones/visualize_logs" target="_blank" rel="noopener"
+>Visualize_Logs&lt;/a>) - Open source visualization library and command line tools for logs (Cuckoo, Procmon, more to come).&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="yomi.yoroi.company" >Yomi&lt;/a> - Free MultiSandbox managed and hosted by Yoroi.&lt;/li>
+&lt;/ul>
+&lt;h3 id="scanner-tools">Scanner Tools
+&lt;/h3>&lt;ul>
+&lt;li>&lt;b>&lt;code>   689⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   103🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/Neo23x0/Fenrir" target="_blank" rel="noopener"
+>Fenrir&lt;/a>) - Simple IOC scanner. It allows scanning any Linux/Unix/OSX system for IOCs in plain bash. Created by the creators of THOR and LOKI.&lt;/li>
+&lt;li>&lt;b>&lt;code>  3368⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   581🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/Neo23x0/Loki" target="_blank" rel="noopener"
+>LOKI&lt;/a>) - Free IR scanner for scanning endpoint with yara rules and other indicators(IOCs).&lt;/li>
+&lt;li>&lt;b>&lt;code>   163⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    27🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/spyre-project/spyre" target="_blank" rel="noopener"
+>Spyre&lt;/a>) - Simple YARA-based IOC scanner written in Go&lt;/li>
+&lt;/ul>
+&lt;h3 id="timeline-tools">Timeline Tools
+&lt;/h3>&lt;ul>
+&lt;li>&lt;b>&lt;code>   760⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    81🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/cyb3rfox/Aurora-Incident-Response" target="_blank" rel="noopener"
+>Aurora Incident Response&lt;/a>) - Platform developed to build easily a detailed timeline of an incident.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="www.fireeye.com/services/freeware/highlighter.html" >Highlighter&lt;/a> - Free Tool available from Fire/Mandiant that will depict log/text file that can highlight areas on the graphic, that corresponded to a key word or phrase. Good for time lining an infection and what was done post compromise.&lt;/li>
+&lt;li>&lt;b>&lt;code>  1017⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   133🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/etsy/morgue" target="_blank" rel="noopener"
+>Morgue&lt;/a>) - PHP Web app by Etsy for managing postmortems.&lt;/li>
+&lt;li>&lt;b>&lt;code>  1720⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   348🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/log2timeline/plaso" target="_blank" rel="noopener"
+>Plaso&lt;/a>) - a Python-based backend engine for the tool log2timeline.&lt;/li>
+&lt;li>&lt;b>&lt;code>  2594⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   590🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/google/timesketch" target="_blank" rel="noopener"
+>Timesketch&lt;/a>) - Open source tool for collaborative forensic timeline analysis.&lt;/li>
+&lt;/ul>
+&lt;h3 id="videos">Videos
+&lt;/h3>&lt;ul>
+&lt;li>🌎 &lt;a class="link" href="www.youtube.com/watch?v=bDcx4UNpKNc" >The Future of Incident Response&lt;/a> - Presented by Bruce Schneier at OWASP AppSecUSA 2015.&lt;/li>
+&lt;/ul>
+&lt;h3 id="windows-evidence-collection">Windows Evidence Collection
+&lt;/h3>&lt;ul>
+&lt;li>&lt;b>&lt;code>   183⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    29🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/OMENScan/AChoir" target="_blank" rel="noopener"
+>AChoir&lt;/a>) - Framework/scripting tool to standardize and simplify the process of scripting live acquisition utilities for Windows.&lt;/li>
+&lt;li>&lt;a class="link" href="http://www.crowdstrike.com/community-tools/" target="_blank" rel="noopener"
+>Crowd Response&lt;/a> - Lightweight Windows console application designed to aid in the gathering of system information for incident response and security engagements. It features numerous modules and output formats.&lt;/li>
+&lt;li>&lt;a class="link" href="http://www.cybertriage.com" target="_blank" rel="noopener"
+>Cyber Triage&lt;/a> - Cyber Triage has a lightweight collection tool that is free to use. It collects source files (such as registry hives and event logs), but also parses them on the live host so that it can also collect the executables that the startup items, scheduled, tasks, etc. refer to. It&amp;rsquo;s output is a JSON file that can be imported into the free version of Cyber Triage. Cyber Triage is made by Sleuth Kit Labs, which also makes Autopsy.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="dfir-orc.github.io/" >DFIR ORC&lt;/a> - DFIR ORC is a collection of specialized tools dedicated to reliably parse and collect critical artifacts such as the MFT, registry hives or event logs. DFIR ORC collects data, but does not analyze it: it is not meant to triage machines. It provides a forensically relevant snapshot of machines running Microsoft Windows. The code can be found on &lt;b>&lt;code>   379⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    42🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/DFIR-ORC/dfir-orc" target="_blank" rel="noopener"
+>GitHub&lt;/a>).&lt;/li>
+&lt;li>&lt;b>&lt;code>   505⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   126🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/SekoiaLab/Fastir_Collector" target="_blank" rel="noopener"
+>FastIR Collector&lt;/a>) - Tool that collects different artifacts on live Windows systems and records the results in csv files. With the analyses of these artifacts, an early compromise can be detected.&lt;/li>
+&lt;li>&lt;b>&lt;code>  2211⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   189🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/rabbitstack/fibratus" target="_blank" rel="noopener"
+>Fibratus&lt;/a>) - Tool for exploration and tracing of the Windows kernel.&lt;/li>
+&lt;li>&lt;b>&lt;code>   192⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    19🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/muteb/Hoarder" target="_blank" rel="noopener"
+>Hoarder&lt;/a>) - Collecting the most valuable artifacts for forensics or incident response investigations.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="binalyze.com/products/irec-free/" >IREC&lt;/a> - All-in-one IR Evidence Collector which captures RAM Image, $MFT, EventLogs, WMI Scripts, Registry Hives, System Restore Points and much more. It is FREE, lightning fast and easy to use.&lt;/li>
+&lt;li>&lt;b>&lt;code>   145⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    29🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/mgreen27/Invoke-LiveResponse" target="_blank" rel="noopener"
+>Invoke-LiveResponse&lt;/a>) - Invoke-LiveResponse is a live response tool for targeted collection.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="www.fireeye.com/services/freeware/ioc-finder.html" >IOC Finder&lt;/a> - Free tool from Mandiant for collecting host system data and reporting the presence of Indicators of Compromise (IOCs). Support for Windows only. No longer maintained. Only fully supported up to Windows 7 / Windows Server 2008 R2.&lt;/li>
+&lt;li>&lt;b>&lt;code>   130⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    23🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/AJMartel/IRTriage" target="_blank" rel="noopener"
+>IRTriage&lt;/a>) - Incident Response Triage - Windows Evidence Collection for Forensic Analysis.&lt;/li>
+&lt;li>🌎 &lt;a class="link" href="www.kroll.com/en/services/cyber-risk/incident-response-litigation-support/kroll-artifact-parser-extractor-kape" >KAPE&lt;/a> - Kroll Artifact Parser and Extractor (KAPE) by Eric Zimmerman. A triage tool that finds the most prevalent digital artifacts and then parses them quickly. Great and thorough when time is of the essence.&lt;/li>
+&lt;li>&lt;b>&lt;code>  3368⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   581🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/Neo23x0/Loki" target="_blank" rel="noopener"
+>LOKI&lt;/a>) - Free IR scanner for scanning endpoint with yara rules and other indicators(IOCs).&lt;/li>
+&lt;li>&lt;b>&lt;code>   435⭐&lt;/code>&lt;/b> &lt;b>&lt;code>    82🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/TonyPhipps/Meerkat" target="_blank" rel="noopener"
+>MEERKAT&lt;/a>) - PowerShell-based triage and threat hunting for Windows.&lt;/li>
+&lt;li>&lt;b>&lt;code>    39⭐&lt;/code>&lt;/b> &lt;b>&lt;code>     7🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/AlmCo/Panorama" target="_blank" rel="noopener"
+>Panorama&lt;/a>) - Fast incident overview on live Windows systems.&lt;/li>
+&lt;li>&lt;b>&lt;code>  1385⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   275🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/Invoke-IR/PowerForensics" target="_blank" rel="noopener"
+>PowerForensics&lt;/a>) - Live disk forensics platform, using PowerShell.&lt;/li>
+&lt;li>&lt;b>&lt;code>     ?⭐&lt;/code>&lt;/b> &lt;b>&lt;code>     ?🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/gfoss/PSRecon/" target="_blank" rel="noopener"
+>PSRecon&lt;/a>) - PSRecon gathers data from a remote Windows host using PowerShell (v2 or later), organizes the data into folders, hashes all extracted data, hashes PowerShell and various system properties, and sends the data off to the security team. The data can be pushed to a share, sent over email, or retained locally.&lt;/li>
+&lt;li>&lt;b>&lt;code>   545⭐&lt;/code>&lt;/b> &lt;b>&lt;code>   121🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/keydet89/RegRipper3.0" target="_blank" rel="noopener"
+>RegRipper&lt;/a>) - Open source tool, written in Perl, for extracting/parsing information (keys, values, data) from the Registry and presenting it for analysis.&lt;/li>
+&lt;/ul>
+&lt;h2 id="source">Source
+&lt;/h2>&lt;p>&lt;b>&lt;code>  7595⭐&lt;/code>&lt;/b> &lt;b>&lt;code>  1524🍴&lt;/code>&lt;/b> &lt;a class="link" href="https://github.com/meirwah/awesome-incident-response" target="_blank" rel="noopener"
+>meirwah/awesome-incident-response&lt;/a>)&lt;/p></description></item></channel></rss>
