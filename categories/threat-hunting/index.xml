@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Threat Hunting on Feras Jalalah</title><link>https://feras454.github.io/categories/threat-hunting/</link><description>Recent content in Threat Hunting on Feras Jalalah</description><generator>Hugo -- gohugo.io</generator><language>en-us</language><lastBuildDate>Fri, 04 Apr 2025 00:00:00 +0000</lastBuildDate><atom:link href="https://feras454.github.io/categories/threat-hunting/index.xml" rel="self" type="application/rss+xml"/><item><title>Why ECS Actually Matters for DFIR</title><link>https://feras454.github.io/p/why-ecs-actually-matters-for-dfir/</link><pubDate>Fri, 04 Apr 2025 00:00:00 +0000</pubDate><guid>https://feras454.github.io/p/why-ecs-actually-matters-for-dfir/</guid><description>&lt;img src="https://feras454.github.io/p/why-ecs-actually-matters-for-dfir/ecs.png" alt="Featured image of post Why ECS Actually Matters for DFIR" />&lt;h1 id="why-ecs-actually-matters-for-dfir">Why ECS Actually Matters for DFIR
+&lt;/h1>&lt;p>If you&amp;rsquo;re working in a SOC or doing DFIR and your environment includes multiple log sources, ECS is not just helpful — it’s a practical necessity.&lt;/p>
+&lt;p>Most environments today are a mix. You&amp;rsquo;ve got host telemetry like Sysmon, forensic data like Prefetch, maybe some EDR, a firewall or two, and network telemetry from Zeek or packet logs. Each speaks its own language. One uses &lt;code>Image&lt;/code>, another calls it &lt;code>exe&lt;/code>, a third uses &lt;code>file_path&lt;/code>. It’s all describing the same thing — you just can’t search it the same way.&lt;/p>
+&lt;p>The overhead of this normalization shows up fast. Your queries get longer, more error-prone. Saved searches only work for a specific log type. You start writing detection logic that’s source-dependent. Correlation across sources? Messy at best.&lt;/p>
+&lt;p>ECS fixes this.&lt;/p>
+&lt;p>Not in theory — in practice.&lt;/p>
+&lt;hr>
+&lt;p>&lt;img src="https://feras454.github.io/p/why-ecs-actually-matters-for-dfir/ecs.png"
+width="1600"
+height="900"
+srcset="https://feras454.github.io/p/why-ecs-actually-matters-for-dfir/ecs_hu_59519ba34bdce32b.png 480w, https://feras454.github.io/p/why-ecs-actually-matters-for-dfir/ecs_hu_44a1ab9c9869783.png 1024w"
+loading="lazy"
+alt="ECS field mapping example"
+class="gallery-image"
+data-flex-grow="177"
+data-flex-basis="426px"
+>&lt;/p>
+&lt;p>When everything speaks ECS, you don’t need to remember which log source calls it &lt;code>src_ip&lt;/code> and which calls it &lt;code>client_ip&lt;/code>. You write the query once:&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-fallback" data-lang="fallback">&lt;span class="line">&lt;span class="cl">source.ip:10.42.42.42
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>Before ECS, that same query looked like this:&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-fallback" data-lang="fallback">&lt;span class="line">&lt;span class="cl">src:10.42.42.42 OR client_ip:10.42.42.42 OR apache.access.remote_ip:10.42.42.42 OR context.user.ip:10.42.42.42 OR src_ip:10.42.42.42
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>This simplification isn’t just about typing less. It makes saved queries readable, portable, and shareable across the team — across tools, even.&lt;/p>
+&lt;blockquote>
+&lt;p>📎 The &lt;a class="link" href="https://www.elastic.co/guide/en/ecs/current/ecs-reference.html#_what_is_ecs" target="_blank" rel="noopener"
+>Elastic Common Schema (ECS)&lt;/a> is an open source specification that defines a common set of fields to be used when storing event data in Elasticsearch, such as logs and metrics. It enables better analysis, visualization, and correlation by providing consistent field names and data types across sources.&lt;/p>&lt;/blockquote>
+&lt;hr>
+&lt;p>In actual investigations, ECS starts pulling its weight when you move between artifacts. A process runs — you see it in Prefetch with a last run time and path. Then you pivot to Sysmon, which logs the actual execution with parent process details and command-line. Autoruns might show you that same path as a persistence method. The common fields — &lt;code>process.name&lt;/code>, &lt;code>process.executable&lt;/code>, &lt;code>host.name&lt;/code>, &lt;code>@timestamp&lt;/code> — they let you walk across those sources like they came from the same place.&lt;/p>
+&lt;hr>
+&lt;p>There are a few fields in ECS that aren’t often populated, but when they are, they’re gold.&lt;/p>
+&lt;p>&lt;code>process.entity_id&lt;/code> is one of them. Sysmon gives you a GUID for each process that doesn’t get reused, even across reboots. When that’s mapped into ECS, you get a way to track one specific process cleanly, even if it shares a name and PID with something else.&lt;/p>
+&lt;p>Another one: &lt;code>code_signature.trusted&lt;/code>. If your telemetry includes signature validation (some EDRs and newer logging agents do), ECS can hold whether the signature was valid or not. That lets you filter for unsigned binaries, mismatched signers, or untrusted roots — right in the query.&lt;/p>
+&lt;p>If you&amp;rsquo;re pulling PE metadata, ECS supports that too. Fields like &lt;code>file.pe.imphash&lt;/code> let you group suspicious samples even if their names and hashes differ.&lt;/p>
+&lt;p>And sometimes it&amp;rsquo;s about clarity. ECS has &lt;code>user.name&lt;/code>, but also &lt;code>user.target.name&lt;/code> and &lt;code>user.effective.name&lt;/code> — useful in cases like privilege escalation or impersonation. When an admin runs a command as another user, the action and context are separated.&lt;/p>
+&lt;p>These aren&amp;rsquo;t headline features, but they’re the ones that save hours when you&amp;rsquo;re buried in logs and trying to understand what really happened.&lt;/p>
+&lt;blockquote>
+&lt;p>📎 You can dig into the full list of ECS fields over at Elastic’s &lt;a class="link" href="https://www.elastic.co/guide/en/ecs/current/ecs-field-reference.html" target="_blank" rel="noopener"
+>official field reference&lt;/a>. It’s worth browsing — even just once — to know what’s available when you need it.&lt;/p>&lt;/blockquote>
+&lt;hr>
+&lt;h3 id="detection-logic-benefits-too">Detection logic benefits too.
+&lt;/h3>&lt;p>I wrote a rule once that looked for suspicious parent-child process combos. It matched on &lt;code>process.command_line&lt;/code> and &lt;code>process.parent.name&lt;/code>. Because both EDR and Sysmon were mapped to ECS, I didn’t have to build two versions of the rule. One rule, multiple sources. That’s the real-world win here.&lt;/p>
+&lt;hr>
+&lt;p>ECS isn’t perfect. Some logs won’t map cleanly. Some tools won’t populate every field. But even partial normalization changes how you work.&lt;/p>
+&lt;p>It’s not about “using the standard” it’s about reducing friction. Less time translating logs. More time following the evidence.&lt;/p>
+&lt;p>If you&amp;rsquo;re dealing with more than one log source, ECS isn&amp;rsquo;t something to consider later. It’s something to implement now.&lt;/p>
+&lt;p>You&amp;rsquo;ll feel the difference the next time you&amp;rsquo;re in the middle of an investigation and the logs — all of them — finally speak the same language.&lt;/p>
+&lt;hr>
+&lt;h3 id="references">References
+&lt;/h3>&lt;ul>
+&lt;li>
+&lt;p>&lt;a class="link" href="https://www.elastic.co/guide/en/ecs/current/ecs-reference.html#_what_is_ecs" target="_blank" rel="noopener"
+>What is ECS? - Elastic Documentation&lt;/a>&lt;br>
+A concise introduction to the goals and purpose of ECS from the Elastic team.&lt;/p>
+&lt;/li>
+&lt;li>
+&lt;p>&lt;a class="link" href="https://www.elastic.co/guide/en/ecs/current/ecs-field-reference.html" target="_blank" rel="noopener"
+>ECS Field Reference&lt;/a>&lt;br>
+Full list of ECS fields and data types, organized by categories.&lt;/p>
+&lt;/li>
+&lt;/ul></description></item></channel></rss>

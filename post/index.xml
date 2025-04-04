@@ -1,0 +1,1063 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Posts on Feras Jalalah</title><link>https://feras454.github.io/post/</link><description>Recent content in Posts on Feras Jalalah</description><generator>Hugo -- gohugo.io</generator><language>en-us</language><lastBuildDate>Fri, 04 Apr 2025 00:00:00 +0000</lastBuildDate><atom:link href="https://feras454.github.io/post/index.xml" rel="self" type="application/rss+xml"/><item><title>Why ECS Actually Matters for DFIR</title><link>https://feras454.github.io/p/why-ecs-actually-matters-for-dfir/</link><pubDate>Fri, 04 Apr 2025 00:00:00 +0000</pubDate><guid>https://feras454.github.io/p/why-ecs-actually-matters-for-dfir/</guid><description>&lt;img src="https://feras454.github.io/p/why-ecs-actually-matters-for-dfir/ecs.png" alt="Featured image of post Why ECS Actually Matters for DFIR" />&lt;h1 id="why-ecs-actually-matters-for-dfir">Why ECS Actually Matters for DFIR
+&lt;/h1>&lt;p>If you&amp;rsquo;re working in a SOC or doing DFIR and your environment includes multiple log sources, ECS is not just helpful — it’s a practical necessity.&lt;/p>
+&lt;p>Most environments today are a mix. You&amp;rsquo;ve got host telemetry like Sysmon, forensic data like Prefetch, maybe some EDR, a firewall or two, and network telemetry from Zeek or packet logs. Each speaks its own language. One uses &lt;code>Image&lt;/code>, another calls it &lt;code>exe&lt;/code>, a third uses &lt;code>file_path&lt;/code>. It’s all describing the same thing — you just can’t search it the same way.&lt;/p>
+&lt;p>The overhead of this normalization shows up fast. Your queries get longer, more error-prone. Saved searches only work for a specific log type. You start writing detection logic that’s source-dependent. Correlation across sources? Messy at best.&lt;/p>
+&lt;p>ECS fixes this.&lt;/p>
+&lt;p>Not in theory — in practice.&lt;/p>
+&lt;hr>
+&lt;p>&lt;img src="https://feras454.github.io/p/why-ecs-actually-matters-for-dfir/ecs.png"
+width="1600"
+height="900"
+srcset="https://feras454.github.io/p/why-ecs-actually-matters-for-dfir/ecs_hu_59519ba34bdce32b.png 480w, https://feras454.github.io/p/why-ecs-actually-matters-for-dfir/ecs_hu_44a1ab9c9869783.png 1024w"
+loading="lazy"
+alt="ECS field mapping example"
+class="gallery-image"
+data-flex-grow="177"
+data-flex-basis="426px"
+>&lt;/p>
+&lt;p>When everything speaks ECS, you don’t need to remember which log source calls it &lt;code>src_ip&lt;/code> and which calls it &lt;code>client_ip&lt;/code>. You write the query once:&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-fallback" data-lang="fallback">&lt;span class="line">&lt;span class="cl">source.ip:10.42.42.42
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>Before ECS, that same query looked like this:&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-fallback" data-lang="fallback">&lt;span class="line">&lt;span class="cl">src:10.42.42.42 OR client_ip:10.42.42.42 OR apache.access.remote_ip:10.42.42.42 OR context.user.ip:10.42.42.42 OR src_ip:10.42.42.42
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>This simplification isn’t just about typing less. It makes saved queries readable, portable, and shareable across the team — across tools, even.&lt;/p>
+&lt;blockquote>
+&lt;p>📎 The &lt;a class="link" href="https://www.elastic.co/guide/en/ecs/current/ecs-reference.html#_what_is_ecs" target="_blank" rel="noopener"
+>Elastic Common Schema (ECS)&lt;/a> is an open source specification that defines a common set of fields to be used when storing event data in Elasticsearch, such as logs and metrics. It enables better analysis, visualization, and correlation by providing consistent field names and data types across sources.&lt;/p>&lt;/blockquote>
+&lt;hr>
+&lt;p>In actual investigations, ECS starts pulling its weight when you move between artifacts. A process runs — you see it in Prefetch with a last run time and path. Then you pivot to Sysmon, which logs the actual execution with parent process details and command-line. Autoruns might show you that same path as a persistence method. The common fields — &lt;code>process.name&lt;/code>, &lt;code>process.executable&lt;/code>, &lt;code>host.name&lt;/code>, &lt;code>@timestamp&lt;/code> — they let you walk across those sources like they came from the same place.&lt;/p>
+&lt;hr>
+&lt;p>There are a few fields in ECS that aren’t often populated, but when they are, they’re gold.&lt;/p>
+&lt;p>&lt;code>process.entity_id&lt;/code> is one of them. Sysmon gives you a GUID for each process that doesn’t get reused, even across reboots. When that’s mapped into ECS, you get a way to track one specific process cleanly, even if it shares a name and PID with something else.&lt;/p>
+&lt;p>Another one: &lt;code>code_signature.trusted&lt;/code>. If your telemetry includes signature validation (some EDRs and newer logging agents do), ECS can hold whether the signature was valid or not. That lets you filter for unsigned binaries, mismatched signers, or untrusted roots — right in the query.&lt;/p>
+&lt;p>If you&amp;rsquo;re pulling PE metadata, ECS supports that too. Fields like &lt;code>file.pe.imphash&lt;/code> let you group suspicious samples even if their names and hashes differ.&lt;/p>
+&lt;p>And sometimes it&amp;rsquo;s about clarity. ECS has &lt;code>user.name&lt;/code>, but also &lt;code>user.target.name&lt;/code> and &lt;code>user.effective.name&lt;/code> — useful in cases like privilege escalation or impersonation. When an admin runs a command as another user, the action and context are separated.&lt;/p>
+&lt;p>These aren&amp;rsquo;t headline features, but they’re the ones that save hours when you&amp;rsquo;re buried in logs and trying to understand what really happened.&lt;/p>
+&lt;blockquote>
+&lt;p>📎 You can dig into the full list of ECS fields over at Elastic’s &lt;a class="link" href="https://www.elastic.co/guide/en/ecs/current/ecs-field-reference.html" target="_blank" rel="noopener"
+>official field reference&lt;/a>. It’s worth browsing — even just once — to know what’s available when you need it.&lt;/p>&lt;/blockquote>
+&lt;hr>
+&lt;h3 id="detection-logic-benefits-too">Detection logic benefits too.
+&lt;/h3>&lt;p>I wrote a rule once that looked for suspicious parent-child process combos. It matched on &lt;code>process.command_line&lt;/code> and &lt;code>process.parent.name&lt;/code>. Because both EDR and Sysmon were mapped to ECS, I didn’t have to build two versions of the rule. One rule, multiple sources. That’s the real-world win here.&lt;/p>
+&lt;hr>
+&lt;p>ECS isn’t perfect. Some logs won’t map cleanly. Some tools won’t populate every field. But even partial normalization changes how you work.&lt;/p>
+&lt;p>It’s not about “using the standard” it’s about reducing friction. Less time translating logs. More time following the evidence.&lt;/p>
+&lt;p>If you&amp;rsquo;re dealing with more than one log source, ECS isn&amp;rsquo;t something to consider later. It’s something to implement now.&lt;/p>
+&lt;p>You&amp;rsquo;ll feel the difference the next time you&amp;rsquo;re in the middle of an investigation and the logs — all of them — finally speak the same language.&lt;/p>
+&lt;hr>
+&lt;h3 id="references">References
+&lt;/h3>&lt;ul>
+&lt;li>
+&lt;p>&lt;a class="link" href="https://www.elastic.co/guide/en/ecs/current/ecs-reference.html#_what_is_ecs" target="_blank" rel="noopener"
+>What is ECS? - Elastic Documentation&lt;/a>&lt;br>
+A concise introduction to the goals and purpose of ECS from the Elastic team.&lt;/p>
+&lt;/li>
+&lt;li>
+&lt;p>&lt;a class="link" href="https://www.elastic.co/guide/en/ecs/current/ecs-field-reference.html" target="_blank" rel="noopener"
+>ECS Field Reference&lt;/a>&lt;br>
+Full list of ECS fields and data types, organized by categories.&lt;/p>
+&lt;/li>
+&lt;/ul></description></item><item><title>Useful PowerShell Commands for Incident Response (IR) triage</title><link>https://feras454.github.io/p/useful-powershell-commands-for-incident-response-ir-triage/</link><pubDate>Wed, 07 Feb 2024 00:00:00 +0000</pubDate><guid>https://feras454.github.io/p/useful-powershell-commands-for-incident-response-ir-triage/</guid><description>&lt;img src="https://feras454.github.io/p/useful-powershell-commands-for-incident-response-ir-triage/pw.png" alt="Featured image of post Useful PowerShell Commands for Incident Response (IR) triage" />&lt;p>&lt;strong>This post explores some of PowerShell commands that I&amp;rsquo;ve found invaluable for rapid triage during investigations.&lt;/strong>&lt;/p>
+&lt;hr>
+&lt;h2 id="system-information">System Information
+&lt;/h2>&lt;ul>
+&lt;li>&lt;strong>System Info&lt;/strong>:  &lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-powershell" data-lang="powershell">&lt;span class="line">&lt;span class="cl">&lt;span class="nb">Get-ComputerInfo&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;h2 id="process-management">Process Management
+&lt;/h2>&lt;ul>
+&lt;li>&lt;strong>Running Processes&lt;/strong>:  &lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-powershell" data-lang="powershell">&lt;span class="line">&lt;span class="cl">&lt;span class="nb">Get-Process&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;ul>
+&lt;li>&lt;strong>Kill Process by Name&lt;/strong>:  &lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-powershell" data-lang="powershell">&lt;span class="line">&lt;span class="cl">&lt;span class="nb">Stop-Process&lt;/span> &lt;span class="n">-Name&lt;/span> &lt;span class="s2">&amp;#34;NameOfProcess&amp;#34;&lt;/span> &lt;span class="n">-Force&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;ul>
+&lt;li>&lt;strong>List Running Processes, Parent Process, and Path&lt;/strong>:  &lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt"> 1
+&lt;/span>&lt;span class="lnt"> 2
+&lt;/span>&lt;span class="lnt"> 3
+&lt;/span>&lt;span class="lnt"> 4
+&lt;/span>&lt;span class="lnt"> 5
+&lt;/span>&lt;span class="lnt"> 6
+&lt;/span>&lt;span class="lnt"> 7
+&lt;/span>&lt;span class="lnt"> 8
+&lt;/span>&lt;span class="lnt"> 9
+&lt;/span>&lt;span class="lnt">10
+&lt;/span>&lt;span class="lnt">11
+&lt;/span>&lt;span class="lnt">12
+&lt;/span>&lt;span class="lnt">13
+&lt;/span>&lt;span class="lnt">14
+&lt;/span>&lt;span class="lnt">15
+&lt;/span>&lt;span class="lnt">16
+&lt;/span>&lt;span class="lnt">17
+&lt;/span>&lt;span class="lnt">18
+&lt;/span>&lt;span class="lnt">19
+&lt;/span>&lt;span class="lnt">20
+&lt;/span>&lt;span class="lnt">21
+&lt;/span>&lt;span class="lnt">22
+&lt;/span>&lt;span class="lnt">23
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-powershell" data-lang="powershell">&lt;span class="line">&lt;span class="cl">&lt;span class="nb">Get-WmiObject&lt;/span> &lt;span class="n">-Class&lt;/span> &lt;span class="n">Win32_Process&lt;/span> &lt;span class="p">|&lt;/span> &lt;span class="nb">ForEach-Object&lt;/span> &lt;span class="p">{&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">    &lt;span class="nv">$processID&lt;/span> &lt;span class="p">=&lt;/span> &lt;span class="nv">$_&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="py">ProcessID&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">    &lt;span class="nv">$parentProcessID&lt;/span> &lt;span class="p">=&lt;/span> &lt;span class="nv">$_&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="py">ParentProcessID&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">    &lt;span class="nv">$parentProcess&lt;/span> &lt;span class="p">=&lt;/span> &lt;span class="nb">Get-WmiObject&lt;/span> &lt;span class="n">-Class&lt;/span> &lt;span class="n">Win32_Process&lt;/span> &lt;span class="n">-Filter&lt;/span> &lt;span class="s2">&amp;#34;ProcessID=&amp;#39;&lt;/span>&lt;span class="nv">$parentProcessID&lt;/span>&lt;span class="s2">&amp;#39;&amp;#34;&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">    &lt;span class="p">[&lt;/span>&lt;span class="no">PSCustomObject&lt;/span>&lt;span class="p">]&lt;/span>&lt;span class="vm">@&lt;/span>&lt;span class="p">{&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">        &lt;span class="n">ProcessName&lt;/span> &lt;span class="p">=&lt;/span> &lt;span class="nv">$_&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="py">Name&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">        &lt;span class="n">ProcessID&lt;/span> &lt;span class="p">=&lt;/span> &lt;span class="nv">$processID&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">        &lt;span class="n">ParentProcessName&lt;/span> &lt;span class="p">=&lt;/span> &lt;span class="nv">$parentProcess&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="py">Name&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">        &lt;span class="n">ExecutablePath&lt;/span> &lt;span class="p">=&lt;/span> &lt;span class="nv">$_&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="py">ExecutablePath&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">        &lt;span class="n">CommandLine&lt;/span> &lt;span class="p">=&lt;/span> &lt;span class="nv">$_&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="py">CommandLine&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">    &lt;span class="p">}&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="p">}&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;ul>
+&lt;li>&lt;strong>Generate Hashes of All Running Processes&lt;/strong>:  &lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt"> 1
+&lt;/span>&lt;span class="lnt"> 2
+&lt;/span>&lt;span class="lnt"> 3
+&lt;/span>&lt;span class="lnt"> 4
+&lt;/span>&lt;span class="lnt"> 5
+&lt;/span>&lt;span class="lnt"> 6
+&lt;/span>&lt;span class="lnt"> 7
+&lt;/span>&lt;span class="lnt"> 8
+&lt;/span>&lt;span class="lnt"> 9
+&lt;/span>&lt;span class="lnt">10
+&lt;/span>&lt;span class="lnt">11
+&lt;/span>&lt;span class="lnt">12
+&lt;/span>&lt;span class="lnt">13
+&lt;/span>&lt;span class="lnt">14
+&lt;/span>&lt;span class="lnt">15
+&lt;/span>&lt;span class="lnt">16
+&lt;/span>&lt;span class="lnt">17
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-powershell" data-lang="powershell">&lt;span class="line">&lt;span class="cl">&lt;span class="nb">Get-Process&lt;/span> &lt;span class="p">|&lt;/span> &lt;span class="nb">ForEach-Object&lt;/span> &lt;span class="p">{&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">    &lt;span class="k">try&lt;/span> &lt;span class="p">{&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">        &lt;span class="nv">$hash&lt;/span> &lt;span class="p">=&lt;/span> &lt;span class="nb">Get-FileHash&lt;/span> &lt;span class="nv">$_&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="py">Path&lt;/span> &lt;span class="n">-Algorithm&lt;/span> &lt;span class="n">SHA256&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">        &lt;span class="nb">Write-Output&lt;/span> &lt;span class="s2">&amp;#34;&lt;/span>&lt;span class="p">$(&lt;/span>&lt;span class="nv">$_&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="n">ProcessName&lt;/span>&lt;span class="p">)&lt;/span>&lt;span class="s2">, &lt;/span>&lt;span class="nv">$hash&lt;/span>&lt;span class="s2">&amp;#34;&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">    &lt;span class="p">}&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">    &lt;span class="k">catch&lt;/span> &lt;span class="p">{&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">        &lt;span class="nb">Write-Output&lt;/span> &lt;span class="s2">&amp;#34;&lt;/span>&lt;span class="p">$(&lt;/span>&lt;span class="nv">$_&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="n">ProcessName&lt;/span>&lt;span class="p">)&lt;/span>&lt;span class="s2">, &lt;/span>&lt;span class="nv">$_&lt;/span>&lt;span class="s2">.Exception.Message&amp;#34;&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">    &lt;span class="p">}&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="p">}&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;h2 id="network-information">Network Information
+&lt;/h2>&lt;ul>
+&lt;li>&lt;strong>Network Connections&lt;/strong>:  &lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-powershell" data-lang="powershell">&lt;span class="line">&lt;span class="cl">&lt;span class="nb">Get-NetTCPConnection&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;ul>
+&lt;li>&lt;strong>Get Listening Ports&lt;/strong>:  &lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-powershell" data-lang="powershell">&lt;span class="line">&lt;span class="cl">&lt;span class="nb">Get-NetTCPConnection&lt;/span> &lt;span class="n">-State&lt;/span> &lt;span class="n">Listen&lt;/span> &lt;span class="p">|&lt;/span> &lt;span class="nb">Select-Object&lt;/span> &lt;span class="n">LocalAddress&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">LocalPort&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">OwningProcess&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">OwningProcessName&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;ul>
+&lt;li>&lt;strong>ARP Table&lt;/strong>:  &lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-powershell" data-lang="powershell">&lt;span class="line">&lt;span class="cl">&lt;span class="nb">Get-NetNeighbor&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-powershell" data-lang="powershell">&lt;span class="line">&lt;span class="cl">&lt;span class="nb">Get-NetNeighbor&lt;/span> &lt;span class="p">|&lt;/span> &lt;span class="nb">Where-Object&lt;/span> &lt;span class="p">{&lt;/span>&lt;span class="nv">$_&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="py">State&lt;/span> &lt;span class="o">-eq&lt;/span> &lt;span class="s1">&amp;#39;Reachable&amp;#39;&lt;/span>&lt;span class="p">}&lt;/span> &lt;span class="p">|&lt;/span> &lt;span class="nb">Format-Table&lt;/span> &lt;span class="n">IPAddress&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">LinkLayerAddress&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">State&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;ul>
+&lt;li>&lt;strong>Check for Open RDP Sessions&lt;/strong>&lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-powershell" data-lang="powershell">&lt;span class="line">&lt;span class="cl">&lt;span class="nb">Get-WmiObject&lt;/span> &lt;span class="n">-Class&lt;/span> &lt;span class="n">Win32_Session&lt;/span> &lt;span class="p">|&lt;/span> &lt;span class="nb">Where-Object&lt;/span> &lt;span class="p">{&lt;/span>&lt;span class="nv">$_&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="py">SessionType&lt;/span> &lt;span class="o">-eq&lt;/span> &lt;span class="s2">&amp;#34;RDP&amp;#34;&lt;/span>&lt;span class="p">}&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;ul>
+&lt;li>&lt;strong>Check DNS Cache for Signs of DNS Hijacking&lt;/strong>&lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-powershell" data-lang="powershell">&lt;span class="line">&lt;span class="cl">&lt;span class="nb">Get-DnsClientCache&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;ul>
+&lt;li>&lt;strong>Get Active Network Shares&lt;/strong>&lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-powershell" data-lang="powershell">&lt;span class="line">&lt;span class="cl">&lt;span class="nb">Get-SmbShare&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;h2 id="file-system-and-registry">File System and Registry
+&lt;/h2>&lt;ul>
+&lt;li>&lt;strong>Traverse Filesystem&lt;/strong>:  &lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-powershell" data-lang="powershell">&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nb">Get-ChildItem&lt;/span> &lt;span class="p">[&lt;/span>&lt;span class="no">file&lt;/span>&lt;span class="p">]&lt;/span> &lt;span class="p">|&lt;/span> &lt;span class="nb">Format-List&lt;/span> &lt;span class="p">*&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;ul>
+&lt;li>&lt;strong>Get File Metadata&lt;/strong>:  &lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-powershell" data-lang="powershell">&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nb">Get-ItemProperty&lt;/span> &lt;span class="n">C:&lt;/span>&lt;span class="p">\&lt;/span>&lt;span class="n">Test&lt;/span>&lt;span class="p">\&lt;/span>&lt;span class="n">Weather&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="py">xls&lt;/span> &lt;span class="p">|&lt;/span> &lt;span class="nb">Format-List&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;ul>
+&lt;li>&lt;strong>File Hash Calculation&lt;/strong>:  &lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-powershell" data-lang="powershell">&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nb">Get-FileHash&lt;/span> &lt;span class="n">-Algorithm&lt;/span> &lt;span class="n">MD5&lt;/span> &lt;span class="n">C:&lt;/span>&lt;span class="p">\&lt;/span>&lt;span class="n">path&lt;/span>&lt;span class="p">\&lt;/span>&lt;span class="n">to&lt;/span>&lt;span class="p">\&lt;/span>&lt;span class="n">file&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;ul>
+&lt;li>&lt;strong>Find Large Files&lt;/strong>:  &lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-powershell" data-lang="powershell">&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nb">gci &lt;/span>&lt;span class="n">-r&lt;/span> &lt;span class="p">|&lt;/span> &lt;span class="nb">sort &lt;/span>&lt;span class="n">-descending&lt;/span> &lt;span class="n">-property&lt;/span> &lt;span class="n">length&lt;/span> &lt;span class="p">|&lt;/span> &lt;span class="nb">select &lt;/span>&lt;span class="n">-first&lt;/span> &lt;span class="mf">10&lt;/span> &lt;span class="n">name&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">length&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">directory&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;ul>
+&lt;li>&lt;strong>Files Created or Modified Between Two Dates&lt;/strong>:  &lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-powershell" data-lang="powershell">&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nb">Get-ChildItem&lt;/span> &lt;span class="n">-Path&lt;/span> &lt;span class="s2">&amp;#34;C:\Path\to\folder&amp;#34;&lt;/span> &lt;span class="n">-Recurse&lt;/span> &lt;span class="p">|&lt;/span> &lt;span class="nb">Where-Object&lt;/span> &lt;span class="p">{(&lt;/span>&lt;span class="nv">$_&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="py">CreationTime&lt;/span> &lt;span class="o">-ge&lt;/span> &lt;span class="p">(&lt;/span>&lt;span class="nb">Get-Date&lt;/span> &lt;span class="s2">&amp;#34;2023-06-11&amp;#34;&lt;/span>&lt;span class="p">))&lt;/span> &lt;span class="o">-and&lt;/span> &lt;span class="p">(&lt;/span>&lt;span class="nv">$_&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="py">CreationTime&lt;/span> &lt;span class="o">-le&lt;/span> &lt;span class="p">(&lt;/span>&lt;span class="nb">Get-Date&lt;/span> &lt;span class="s2">&amp;#34;2023-06-22&amp;#34;&lt;/span>&lt;span class="p">))&lt;/span> &lt;span class="o">-or&lt;/span> &lt;span class="p">(&lt;/span>&lt;span class="nv">$_&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="py">LastWriteTime&lt;/span> &lt;span class="o">-ge&lt;/span> &lt;span class="p">(&lt;/span>&lt;span class="nb">Get-Date&lt;/span> &lt;span class="s2">&amp;#34;2023-06-11&amp;#34;&lt;/span>&lt;span class="p">))&lt;/span> &lt;span class="o">-and&lt;/span> &lt;span class="p">(&lt;/span>&lt;span class="nv">$_&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="py">LastWriteTime&lt;/span> &lt;span class="o">-le&lt;/span> &lt;span class="p">(&lt;/span>&lt;span class="nb">Get-Date&lt;/span> &lt;span class="s2">&amp;#34;2023-06-22&amp;#34;&lt;/span>&lt;span class="p">))}&lt;/span> &lt;span class="p">|&lt;/span> &lt;span class="nb">Select-Object&lt;/span> &lt;span class="n">FullName&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">CreationTime&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">LastWriteTime&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;ul>
+&lt;li>&lt;strong>Search for File by Hash&lt;/strong>:  &lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-powershell" data-lang="powershell">&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nb">Get-ChildItem&lt;/span> &lt;span class="n">-Path&lt;/span> &lt;span class="n">C:&lt;/span>&lt;span class="p">\&lt;/span> &lt;span class="n">-Recurse&lt;/span> &lt;span class="o">-File&lt;/span> &lt;span class="p">|&lt;/span> &lt;span class="nb">Get-FileHash&lt;/span> &lt;span class="p">|&lt;/span> &lt;span class="nb">Where-Object&lt;/span> &lt;span class="n">Hash&lt;/span> &lt;span class="o">-eq&lt;/span> &lt;span class="s1">&amp;#39;HASH_VALUE&amp;#39;&lt;/span> &lt;span class="p">|&lt;/span> &lt;span class="nb">Select-Object&lt;/span> &lt;span class="n">Path&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;ul>
+&lt;li>&lt;strong>Search for File by Name&lt;/strong>:  &lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-powershell" data-lang="powershell">&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nb">Get-ChildItem&lt;/span> &lt;span class="n">-Path&lt;/span> &lt;span class="s2">&amp;#34;C:\Path\To\Search&amp;#34;&lt;/span> &lt;span class="n">-Filter&lt;/span> &lt;span class="s2">&amp;#34;FileName&amp;#34;&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;ul>
+&lt;li>&lt;strong>File Changed in Last 24 Hours&lt;/strong>:  &lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-powershell" data-lang="powershell">&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nb">Get-ChildItem&lt;/span> &lt;span class="n">-Path&lt;/span> &lt;span class="n">C:&lt;/span>&lt;span class="p">\&lt;/span> &lt;span class="n">-Recurse&lt;/span> &lt;span class="o">-File&lt;/span> &lt;span class="n">-Force&lt;/span> &lt;span class="p">|&lt;/span> &lt;span class="nb">Where-Object&lt;/span> &lt;span class="p">{&lt;/span> &lt;span class="nv">$_&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="py">LastWriteTime&lt;/span> &lt;span class="o">-ge&lt;/span> &lt;span class="p">(&lt;/span>&lt;span class="nb">Get-Date&lt;/span>&lt;span class="p">).&lt;/span>&lt;span class="py">AddHours&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="mf">-6&lt;/span>&lt;span class="p">)&lt;/span> &lt;span class="p">}&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;ul>
+&lt;li>&lt;strong>Files Created in Last 24 Hours&lt;/strong>:  &lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-powershell" data-lang="powershell">&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nb">Get-ChildItem&lt;/span> &lt;span class="n">-Path&lt;/span> &lt;span class="n">C:&lt;/span>&lt;span class="p">\&lt;/span> &lt;span class="n">-Recurse&lt;/span> &lt;span class="o">-File&lt;/span> &lt;span class="n">-Force&lt;/span> &lt;span class="p">|&lt;/span> &lt;span class="nb">Where-Object&lt;/span> &lt;span class="p">{&lt;/span> &lt;span class="nv">$_&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="py">CreationTime&lt;/span> &lt;span class="o">-ge&lt;/span> &lt;span class="p">(&lt;/span>&lt;span class="nb">Get-Date&lt;/span>&lt;span class="p">).&lt;/span>&lt;span class="py">AddHours&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="mf">-6&lt;/span>&lt;span class="p">)&lt;/span> &lt;span class="p">}&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;ul>
+&lt;li>&lt;strong>Obtain List of All Files&lt;/strong>:  &lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;span class="lnt">3
+&lt;/span>&lt;span class="lnt">4
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-powershell" data-lang="powershell">&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="n">tree&lt;/span> &lt;span class="n">C:&lt;/span>&lt;span class="p">\&lt;/span> &lt;span class="p">/&lt;/span>&lt;span class="n">F&lt;/span> &lt;span class="p">&amp;gt;&lt;/span> &lt;span class="n">output&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="py">txt&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nb">dir &lt;/span>&lt;span class="n">C:&lt;/span>&lt;span class="p">\&lt;/span> &lt;span class="p">/&lt;/span>&lt;span class="n">A:&lt;/span>&lt;span class="nb">H &lt;/span>&lt;span class="p">/&lt;/span>&lt;span class="n">-C&lt;/span> &lt;span class="p">/&lt;/span>&lt;span class="n">Q&lt;/span> &lt;span class="p">/&lt;/span>&lt;span class="nb">R &lt;/span>&lt;span class="p">/&lt;/span>&lt;span class="n">S&lt;/span> &lt;span class="p">/&lt;/span>&lt;span class="n">X&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;ul>
+&lt;li>&lt;strong>Delete Registry Key&lt;/strong>:  &lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-powershell" data-lang="powershell">&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nb">Remove-Item&lt;/span> &lt;span class="n">-Path&lt;/span> &lt;span class="s2">&amp;#34;HKLM:\Path\To\Registry\Key&amp;#34;&lt;/span> &lt;span class="n">-Recurse&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;ul>
+&lt;li>&lt;strong>Read Registry Key&lt;/strong>:  &lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-powershell" data-lang="powershell">&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nb">Get-ChildItem&lt;/span> &lt;span class="n">-Path&lt;/span> &lt;span class="s1">&amp;#39;HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\&amp;#39;&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;ul>
+&lt;li>&lt;strong>Retrieve Auto-Start Locations (Startup Programs)&lt;/strong>&lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-powershell" data-lang="powershell">&lt;span class="line">&lt;span class="cl">&lt;span class="nb">Get-WmiObject&lt;/span> &lt;span class="n">-Query&lt;/span> &lt;span class="s2">&amp;#34;SELECT * FROM Win32_StartupCommand&amp;#34;&lt;/span> &lt;span class="p">|&lt;/span> &lt;span class="nb">Select-Object&lt;/span> &lt;span class="n">Name&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">Command&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">User&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;ul>
+&lt;li>&lt;strong>List Installed Programs&lt;/strong>&lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-powershell" data-lang="powershell">&lt;span class="line">&lt;span class="cl">&lt;span class="nb">Get-ItemProperty&lt;/span> &lt;span class="n">HKLM&lt;/span>&lt;span class="err">:&lt;/span>&lt;span class="p">\&lt;/span>&lt;span class="n">Software&lt;/span>&lt;span class="p">\&lt;/span>&lt;span class="n">Microsoft&lt;/span>&lt;span class="p">\&lt;/span>&lt;span class="n">Windows&lt;/span>&lt;span class="p">\&lt;/span>&lt;span class="n">CurrentVersion&lt;/span>&lt;span class="p">\&lt;/span>&lt;span class="n">Uninstall&lt;/span>&lt;span class="p">\*&lt;/span> &lt;span class="p">|&lt;/span> &lt;span class="nb">Select-Object&lt;/span> &lt;span class="n">DisplayName&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">DisplayVersion&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">InstallDate&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;h2 id="event-logs">Event Logs
+&lt;/h2>&lt;ul>
+&lt;li>&lt;strong>Search Sysmon Logs&lt;/strong>:  &lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-powershell" data-lang="powershell">&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nb">Get-WinEvent&lt;/span> &lt;span class="n">-FilterHashtable&lt;/span> &lt;span class="vm">@&lt;/span>&lt;span class="p">{&lt;/span>&lt;span class="n">logname&lt;/span>&lt;span class="p">=&lt;/span>&lt;span class="s2">&amp;#34;Microsoft-Windows-Sysmon/Operational&amp;#34;&lt;/span>&lt;span class="p">;&lt;/span> &lt;span class="n">id&lt;/span>&lt;span class="p">=&lt;/span>&lt;span class="mf">1&lt;/span>&lt;span class="p">}&lt;/span> &lt;span class="p">|&lt;/span> &lt;span class="nb">Where-Object&lt;/span> &lt;span class="p">{&lt;/span>&lt;span class="nv">$_&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="n">Properties&lt;/span>&lt;span class="p">[&lt;/span>&lt;span class="mf">20&lt;/span>&lt;span class="p">].&lt;/span>&lt;span class="py">Value&lt;/span> &lt;span class="o">-like&lt;/span> &lt;span class="s2">&amp;#34;*rdpclip*&amp;#34;&lt;/span>&lt;span class="p">}&lt;/span> &lt;span class="p">|&lt;/span> &lt;span class="nb">fl
+&lt;/span>&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;ul>
+&lt;li>&lt;strong>Login History&lt;/strong>:  &lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-powershell" data-lang="powershell">&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nb">Get-WinEvent&lt;/span> &lt;span class="n">-FilterHashtable&lt;/span> &lt;span class="vm">@&lt;/span>&lt;span class="p">{&lt;/span>&lt;span class="n">LogName&lt;/span>&lt;span class="p">=&lt;/span>&lt;span class="s1">&amp;#39;Security&amp;#39;&lt;/span>&lt;span class="p">;&lt;/span>&lt;span class="n">ID&lt;/span>&lt;span class="p">=&lt;/span>&lt;span class="mf">4624&lt;/span>&lt;span class="p">,&lt;/span>&lt;span class="mf">4625&lt;/span>&lt;span class="p">}&lt;/span> &lt;span class="p">|&lt;/span> &lt;span class="nb">Select-Object&lt;/span> &lt;span class="n">TimeCreated&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">Id&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">Message&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;ul>
+&lt;li>&lt;strong>Search Event Logs by Keyword&lt;/strong>:  &lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-powershell" data-lang="powershell">&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nb">Get-WinEvent&lt;/span> &lt;span class="n">-FilterHashtable&lt;/span> &lt;span class="vm">@&lt;/span>&lt;span class="p">{&lt;/span> &lt;span class="n">LogName&lt;/span>&lt;span class="p">=&lt;/span>&lt;span class="s1">&amp;#39;Security&amp;#39;&lt;/span>&lt;span class="p">;}&lt;/span> &lt;span class="p">|&lt;/span> &lt;span class="nb">Select &lt;/span>&lt;span class="n">Timecreated&lt;/span>&lt;span class="p">,&lt;/span>&lt;span class="n">LogName&lt;/span>&lt;span class="p">,&lt;/span>&lt;span class="n">Message&lt;/span> &lt;span class="p">|&lt;/span> &lt;span class="nb">Where &lt;/span>&lt;span class="p">{&lt;/span>&lt;span class="nv">$_&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="py">Message&lt;/span> &lt;span class="o">-like&lt;/span> &lt;span class="s2">&amp;#34;*test*&amp;#34;&lt;/span>&lt;span class="p">}&lt;/span> &lt;span class="p">|&lt;/span> &lt;span class="nb">FL
+&lt;/span>&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;ul>
+&lt;li>&lt;strong>Convert EVTX to CSV&lt;/strong>:  &lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-powershell" data-lang="powershell">&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nb">Get-WinEvent&lt;/span> &lt;span class="n">-Path&lt;/span> &lt;span class="p">.\&lt;/span>&lt;span class="nb">Microsoft-Windows&lt;/span>&lt;span class="n">-Sysmon&lt;/span>&lt;span class="k">%&lt;/span>&lt;span class="n">4Operational&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="py">evtx&lt;/span> &lt;span class="p">|&lt;/span> &lt;span class="nb">Export-CSV&lt;/span> &lt;span class="n">foo&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="py">csv&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;h2 id="user-and-account-information">User and Account Information
+&lt;/h2>&lt;ul>
+&lt;li>&lt;strong>Local Users Information&lt;/strong>:  &lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-powershell" data-lang="powershell">&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nb">Get-LocalUser&lt;/span> &lt;span class="p">|&lt;/span> &lt;span class="nb">Select &lt;/span>&lt;span class="p">*&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;ul>
+&lt;li>&lt;strong>Get the SID from a Given Username&lt;/strong>:  &lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;span class="lnt">3
+&lt;/span>&lt;span class="lnt">4
+&lt;/span>&lt;span class="lnt">5
+&lt;/span>&lt;span class="lnt">6
+&lt;/span>&lt;span class="lnt">7
+&lt;/span>&lt;span class="lnt">8
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-powershell" data-lang="powershell">&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nv">$username&lt;/span> &lt;span class="p">=&lt;/span> &lt;span class="s2">&amp;#34;Domain\Username&amp;#34;&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nv">$account&lt;/span> &lt;span class="p">=&lt;/span> &lt;span class="nb">New-Object&lt;/span> &lt;span class="n">System&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="py">Security&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="py">Principal&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="py">NTAccount&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="nv">$username&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nv">$sid&lt;/span> &lt;span class="p">=&lt;/span> &lt;span class="nv">$account&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="py">Translate&lt;/span>&lt;span class="p">([&lt;/span>&lt;span class="no">System.Security.Principal.SecurityIdentifier&lt;/span>&lt;span class="p">]).&lt;/span>&lt;span class="py">Value&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nb">Write-Output&lt;/span> &lt;span class="nv">$sid&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;ul>
+&lt;li>&lt;strong>Translate SIDs&lt;/strong>:  &lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;span class="lnt">3
+&lt;/span>&lt;span class="lnt">4
+&lt;/span>&lt;span class="lnt">5
+&lt;/span>&lt;span class="lnt">6
+&lt;/span>&lt;span class="lnt">7
+&lt;/span>&lt;span class="lnt">8
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-powershell" data-lang="powershell">&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nv">$SID&lt;/span> &lt;span class="p">=&lt;/span> &lt;span class="s2">&amp;#34;S-1-5-21-329068152-1454471165-1417001333-12984448&amp;#34;&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nv">$account&lt;/span> &lt;span class="p">=&lt;/span> &lt;span class="nb">New-Object&lt;/span> &lt;span class="n">System&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="py">Security&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="py">Principal&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="py">SecurityIdentifier&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="nv">$SID&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nv">$username&lt;/span> &lt;span class="p">=&lt;/span> &lt;span class="nv">$account&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="py">Translate&lt;/span>&lt;span class="p">([&lt;/span>&lt;span class="no">System.Security.Principal.NTAccount&lt;/span>&lt;span class="p">]).&lt;/span>&lt;span class="py">Value&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nb">Write-Output&lt;/span> &lt;span class="nv">$username&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;h2 id="job-and-task-management">Job and Task Management
+&lt;/h2>&lt;ul>
+&lt;li>&lt;strong>Scheduled Tasks&lt;/strong>:  &lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-powershell" data-lang="powershell">&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nb">Get-ScheduledTask&lt;/span> &lt;span class="p">|&lt;/span> &lt;span class="nb">Where-Object&lt;/span> &lt;span class="p">{&lt;/span> &lt;span class="nv">$_&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="py">State&lt;/span> &lt;span class="o">-eq&lt;/span> &lt;span class="s1">&amp;#39;Ready&amp;#39;&lt;/span> &lt;span class="p">}&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-powershell" data-lang="powershell">&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nb">Get-ScheduledJob&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;h2 id="file-operations">File Operations
+&lt;/h2>&lt;ul>
+&lt;li>&lt;strong>Copy File&lt;/strong>:  &lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-powershell" data-lang="powershell">&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nb">Copy-Item&lt;/span> &lt;span class="n">-Source&lt;/span> &lt;span class="p">\\&lt;/span>&lt;span class="n">server&lt;/span>&lt;span class="p">\&lt;/span>&lt;span class="n">share&lt;/span>&lt;span class="p">\&lt;/span>&lt;span class="n">test&lt;/span> &lt;span class="n">-Destination&lt;/span> &lt;span class="n">C:&lt;/span>&lt;span class="p">\&lt;/span>&lt;span class="n">path&lt;/span>&lt;span class="p">\&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;ul>
+&lt;li>&lt;strong>Download File from Internet&lt;/strong>:  &lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-powershell" data-lang="powershell">&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nb">Invoke-WebRequest&lt;/span> &lt;span class="n">-Uri&lt;/span> &lt;span class="s2">&amp;#34;https://download.sysinternals.com/files/Sysmon.zip&amp;#34;&lt;/span> &lt;span class="n">-OutFile&lt;/span> &lt;span class="nv">$env:TEMP&lt;/span>&lt;span class="p">\&lt;/span>&lt;span class="n">sysmon&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="py">zip&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;ul>
+&lt;li>&lt;strong>Unzip File&lt;/strong>:  &lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-powershell" data-lang="powershell">&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nb">Expand-Archive&lt;/span> &lt;span class="n">-Path&lt;/span> &lt;span class="p">&amp;lt;&lt;/span>&lt;span class="n">SourcePathofZipFile&lt;/span>&lt;span class="p">&amp;gt;&lt;/span> &lt;span class="n">-DestinationPath&lt;/span> &lt;span class="p">&amp;lt;&lt;/span>&lt;span class="n">DestinationPath&lt;/span>&lt;span class="p">&amp;gt;&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;ul>
+&lt;li>&lt;strong>Encrypt File&lt;/strong>:  &lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-powershell" data-lang="powershell">&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nb">Read-Host&lt;/span> &lt;span class="n">-Prompt&lt;/span> &lt;span class="s2">&amp;#34;Enter the encryption passphrase&amp;#34;&lt;/span> &lt;span class="n">-AsSecureString&lt;/span> &lt;span class="p">|&lt;/span> &lt;span class="nb">ConvertFrom-SecureString&lt;/span> &lt;span class="p">|&lt;/span> &lt;span class="nb">Set-Content&lt;/span> &lt;span class="n">-Path&lt;/span> &lt;span class="s2">&amp;#34;C:\Path\EncryptedFile.txt&amp;#34;&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;h2 id="web-operations">Web Operations
+&lt;/h2>&lt;ul>
+&lt;li>&lt;strong>Upload File to Web&lt;/strong>:  &lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;span class="lnt">3
+&lt;/span>&lt;span class="lnt">4
+&lt;/span>&lt;span class="lnt">5
+&lt;/span>&lt;span class="lnt">6
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-powershell" data-lang="powershell">&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nv">$filePath&lt;/span> &lt;span class="p">=&lt;/span> &lt;span class="s2">&amp;#34;C:\Path\To\File.txt&amp;#34;&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nv">$uploadUrl&lt;/span> &lt;span class="p">=&lt;/span> &lt;span class="s2">&amp;#34;http://example.com/upload&amp;#34;&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nb">Invoke-RestMethod&lt;/span> &lt;span class="n">-Uri&lt;/span> &lt;span class="nv">$uploadUrl&lt;/span> &lt;span class="n">-Method&lt;/span> &lt;span class="n">POST&lt;/span> &lt;span class="n">-InFile&lt;/span> &lt;span class="nv">$filePath&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;h2 id="miscellaneous">Miscellaneous
+&lt;/h2>&lt;ul>
+&lt;li>&lt;strong>Generate Random Data (10MB)&lt;/strong>:  &lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-powershell" data-lang="powershell">&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nv">$fileSizeInMB&lt;/span> &lt;span class="p">=&lt;/span> &lt;span class="mf">10&lt;/span>&lt;span class="p">;&lt;/span> &lt;span class="nv">$filePath&lt;/span> &lt;span class="p">=&lt;/span> &lt;span class="s2">&amp;#34;&lt;/span>&lt;span class="nv">$PWD&lt;/span>&lt;span class="s2">\file.txt&amp;#34;&lt;/span>&lt;span class="p">;&lt;/span> &lt;span class="nv">$data&lt;/span> &lt;span class="p">=&lt;/span> &lt;span class="p">[&lt;/span>&lt;span class="no">byte[]&lt;/span>&lt;span class="p">]::&lt;/span>&lt;span class="n">new&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="nv">$fileSizeInMB&lt;/span> &lt;span class="p">*&lt;/span> &lt;span class="mf">1&lt;/span>&lt;span class="p">MB);&lt;/span> &lt;span class="nv">$random&lt;/span> &lt;span class="p">=&lt;/span> &lt;span class="nb">New-Object&lt;/span> &lt;span class="n">-TypeName&lt;/span> &lt;span class="n">System&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="n">Random&lt;/span>&lt;span class="p">;&lt;/span> &lt;span class="nv">$random&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="py">NextBytes&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="nv">$data&lt;/span>&lt;span class="p">);&lt;/span> &lt;span class="p">[&lt;/span>&lt;span class="no">System.IO.File&lt;/span>&lt;span class="p">]::&lt;/span>&lt;span class="n">WriteAllBytes&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="nv">$filePath&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="nv">$data&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;ul>
+&lt;li>&lt;strong>Regex Matching for Specific String (&amp;ldquo;feras&amp;rdquo;)&lt;/strong>:  &lt;/li>
+&lt;/ul>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-powershell" data-lang="powershell">&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nb">Select-String&lt;/span> &lt;span class="n">-Path&lt;/span> &lt;span class="n">C:&lt;/span>&lt;span class="p">\&lt;/span>&lt;span class="n">path&lt;/span>&lt;span class="p">\&lt;/span>&lt;span class="n">strings&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="py">txt&lt;/span> &lt;span class="n">-Pattern&lt;/span> &lt;span class="s1">&amp;#39;\bferas\b&amp;#39;&lt;/span> &lt;span class="n">-AllMatches&lt;/span> &lt;span class="p">|&lt;/span> &lt;span class="p">%&lt;/span> &lt;span class="p">{&lt;/span> &lt;span class="nv">$_&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="py">Matches&lt;/span> &lt;span class="p">}&lt;/span> &lt;span class="p">|&lt;/span> &lt;span class="p">%&lt;/span> &lt;span class="p">{&lt;/span> &lt;span class="nv">$_&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="py">Value&lt;/span> &lt;span class="p">}&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>&lt;strong>Linux cut command&lt;/strong>&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt"> 1
+&lt;/span>&lt;span class="lnt"> 2
+&lt;/span>&lt;span class="lnt"> 3
+&lt;/span>&lt;span class="lnt"> 4
+&lt;/span>&lt;span class="lnt"> 5
+&lt;/span>&lt;span class="lnt"> 6
+&lt;/span>&lt;span class="lnt"> 7
+&lt;/span>&lt;span class="lnt"> 8
+&lt;/span>&lt;span class="lnt"> 9
+&lt;/span>&lt;span class="lnt">10
+&lt;/span>&lt;span class="lnt">11
+&lt;/span>&lt;span class="lnt">12
+&lt;/span>&lt;span class="lnt">13
+&lt;/span>&lt;span class="lnt">14
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-powershell" data-lang="powershell">&lt;span class="line">&lt;span class="cl">&lt;span class="n">Cut&lt;/span> &lt;span class="kd">function&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="nb">powershell&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="kd">function&lt;/span>&lt;span class="w"> &lt;/span>&lt;span class="nb">cut&lt;/span> &lt;span class="p">{&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">param&lt;/span>&lt;span class="p">(&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="p">[&lt;/span>&lt;span class="nb">Parameter&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="na">ValueFromPipeline&lt;/span>&lt;span class="p">=&lt;/span>&lt;span class="vm">$True&lt;/span>&lt;span class="p">)]&lt;/span> &lt;span class="p">[&lt;/span>&lt;span class="no">string&lt;/span>&lt;span class="p">]&lt;/span>&lt;span class="nv">$inputobject&lt;/span>&lt;span class="p">,&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="p">[&lt;/span>&lt;span class="no">string&lt;/span>&lt;span class="p">]&lt;/span>&lt;span class="nv">$delimiter&lt;/span>&lt;span class="p">=&lt;/span>&lt;span class="s1">&amp;#39;\s+&amp;#39;&lt;/span>&lt;span class="p">,&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="p">[&lt;/span>&lt;span class="no">string[]&lt;/span>&lt;span class="p">]&lt;/span>&lt;span class="nv">$field&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">process&lt;/span> &lt;span class="p">{&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">if&lt;/span> &lt;span class="p">(&lt;/span>&lt;span class="nv">$field&lt;/span> &lt;span class="o">-eq&lt;/span> &lt;span class="vm">$null&lt;/span>&lt;span class="p">)&lt;/span> &lt;span class="p">{&lt;/span> &lt;span class="nv">$inputobject&lt;/span> &lt;span class="n">-split&lt;/span> &lt;span class="nv">$delimiter&lt;/span> &lt;span class="p">}&lt;/span> &lt;span class="k">else&lt;/span> &lt;span class="p">{&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="p">(&lt;/span>&lt;span class="nv">$inputobject&lt;/span> &lt;span class="n">-split&lt;/span> &lt;span class="nv">$delimiter&lt;/span>&lt;span class="p">)[&lt;/span>&lt;span class="nv">$field&lt;/span>&lt;span class="p">]&lt;/span> &lt;span class="p">}&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="p">}&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="p">}&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;hr>
+&lt;h2 id="powershell-with-security-utilities">PowerShell with Security Utilities
+&lt;/h2>&lt;p>PowerShell enhances security utilities like Sysinternals for effective IR:&lt;/p>
+&lt;ul>
+&lt;li>
+&lt;p>&lt;strong>Sysinternals&lt;/strong>: Start utilities like Process Explorer:&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-powershell" data-lang="powershell">&lt;span class="line">&lt;span class="cl">&lt;span class="nb">Start-Process&lt;/span> &lt;span class="s2">&amp;#34;C:\Path\To\ProcessExplorer.exe&amp;#34;&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;/li>
+&lt;li>
+&lt;p>&lt;strong>Remote Commands&lt;/strong>: Use PsExec to run commands on target machines:&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-powershell" data-lang="powershell">&lt;span class="line">&lt;span class="cl">&lt;span class="p">.\&lt;/span>&lt;span class="n">PsExec&lt;/span>&lt;span class="p">.&lt;/span>&lt;span class="py">exe&lt;/span> &lt;span class="p">\\&lt;/span>&lt;span class="n">TargetMachine&lt;/span> &lt;span class="n">cmd&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;/li>
+&lt;li>
+&lt;p>&lt;strong>Data Collection&lt;/strong>: Retrieve logs from Sysmon:&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-powershell" data-lang="powershell">&lt;span class="line">&lt;span class="cl">&lt;span class="nb">Get-WinEvent&lt;/span> &lt;span class="n">-LogName&lt;/span> &lt;span class="s1">&amp;#39;Microsoft-Windows-Sysmon/Operational&amp;#39;&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;/li>
+&lt;/ul>
+&lt;hr></description></item><item><title>Machine Learning Detection of Malicious URLs with Implementation Using Keras</title><link>https://feras454.github.io/p/machine-learning-detection-of-malicious-urls-with-implementation-using-keras/</link><pubDate>Mon, 07 Nov 2022 00:00:00 +0000</pubDate><guid>https://feras454.github.io/p/machine-learning-detection-of-malicious-urls-with-implementation-using-keras/</guid><description>&lt;img src="https://feras454.github.io/p/machine-learning-detection-of-malicious-urls-with-implementation-using-keras/banner.png" alt="Featured image of post Machine Learning Detection of Malicious URLs with Implementation Using Keras" />&lt;h2 id="introduction">Introduction
+&lt;/h2>&lt;p>This project is part of the &lt;strong>Machine Learning for Cybersecurity course&lt;/strong> I am taking as a cybersecurity student at the university. While I am not an ML expert, this blog outlines how to implement a deep learning model to detect malicious URLs. I will demonstrate how a neural network can classify URLs as benign or malicious using specific features. Basic ML knowledge is required, but deep expertise is not necessary.&lt;/p>
+&lt;hr>
+&lt;h2 id="dataset">Dataset
+&lt;/h2>&lt;p>The dataset used is the &lt;strong>Malicious URLs Phishing Dataset&lt;/strong>, which contains benign and malicious URLs. The dataset and full project code are available on &lt;a class="link" href="https://github.com/Feras454/Detection-of-Malicious-URLs-using-machine-learning" target="_blank" rel="noopener"
+>GitHub&lt;/a>.&lt;/p>
+&lt;hr>
+&lt;h2 id="step-by-step-code-breakdown">Step-by-Step Code Breakdown
+&lt;/h2>&lt;h3 id="step-1-importing-necessary-libraries">Step 1: Importing Necessary Libraries
+&lt;/h3>&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt"> 1
+&lt;/span>&lt;span class="lnt"> 2
+&lt;/span>&lt;span class="lnt"> 3
+&lt;/span>&lt;span class="lnt"> 4
+&lt;/span>&lt;span class="lnt"> 5
+&lt;/span>&lt;span class="lnt"> 6
+&lt;/span>&lt;span class="lnt"> 7
+&lt;/span>&lt;span class="lnt"> 8
+&lt;/span>&lt;span class="lnt"> 9
+&lt;/span>&lt;span class="lnt">10
+&lt;/span>&lt;span class="lnt">11
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-python" data-lang="python">&lt;span class="line">&lt;span class="cl">&lt;span class="kn">import&lt;/span> &lt;span class="nn">pandas&lt;/span> &lt;span class="k">as&lt;/span> &lt;span class="nn">pd&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="kn">import&lt;/span> &lt;span class="nn">numpy&lt;/span> &lt;span class="k">as&lt;/span> &lt;span class="nn">np&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="kn">import&lt;/span> &lt;span class="nn">tensorflow&lt;/span> &lt;span class="k">as&lt;/span> &lt;span class="nn">tf&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="kn">from&lt;/span> &lt;span class="nn">matplotlib&lt;/span> &lt;span class="kn">import&lt;/span> &lt;span class="n">pyplot&lt;/span> &lt;span class="k">as&lt;/span> &lt;span class="n">plt&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="kn">import&lt;/span> &lt;span class="nn">re&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="kn">from&lt;/span> &lt;span class="nn">urllib.parse&lt;/span> &lt;span class="kn">import&lt;/span> &lt;span class="n">urlparse&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="kn">from&lt;/span> &lt;span class="nn">keras.models&lt;/span> &lt;span class="kn">import&lt;/span> &lt;span class="n">Sequential&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="kn">from&lt;/span> &lt;span class="nn">keras.layers&lt;/span> &lt;span class="kn">import&lt;/span> &lt;span class="n">Dense&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="kn">from&lt;/span> &lt;span class="nn">sklearn.model_selection&lt;/span> &lt;span class="kn">import&lt;/span> &lt;span class="n">train_test_split&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="kn">from&lt;/span> &lt;span class="nn">sklearn.preprocessing&lt;/span> &lt;span class="kn">import&lt;/span> &lt;span class="n">LabelEncoder&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="kn">from&lt;/span> &lt;span class="nn">sklearn.metrics&lt;/span> &lt;span class="kn">import&lt;/span> &lt;span class="n">accuracy_score&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">classification_report&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">confusion_matrix&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;hr>
+&lt;h3 id="step-2-loading-the-dataset">Step 2: Loading the Dataset
+&lt;/h3>&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;span class="lnt">3
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-python" data-lang="python">&lt;span class="line">&lt;span class="cl">&lt;span class="c1"># You can find the dataset on my github repo&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="n">data&lt;/span> &lt;span class="o">=&lt;/span> &lt;span class="n">pd&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">read_csv&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="s1">&amp;#39;malicious_phish.csv&amp;#39;&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nb">print&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">data&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">type&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">value_counts&lt;/span>&lt;span class="p">())&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;hr>
+&lt;p>&lt;img src="https://feras454.github.io/p/machine-learning-detection-of-malicious-urls-with-implementation-using-keras/DATA.png"
+width="437"
+height="276"
+srcset="https://feras454.github.io/p/machine-learning-detection-of-malicious-urls-with-implementation-using-keras/DATA_hu_dfc485cd2e4799fb.png 480w, https://feras454.github.io/p/machine-learning-detection-of-malicious-urls-with-implementation-using-keras/DATA_hu_95fa4c6594897f.png 1024w"
+loading="lazy"
+alt="URL samples and types"
+class="gallery-image"
+data-flex-grow="158"
+data-flex-basis="380px"
+>&lt;/p>
+&lt;h3 id="step-3-feature-engineering">Step 3: Feature Engineering
+&lt;/h3>&lt;p>Custom functions extract features like the presence of an IP address, URL length, and count of sensitive words. The features and their descriptions are listed below:&lt;/p>
+&lt;table>
+&lt;thead>
+&lt;tr>
+&lt;th>&lt;strong>Feature&lt;/strong>&lt;/th>
+&lt;th>&lt;strong>Description&lt;/strong>&lt;/th>
+&lt;/tr>
+&lt;/thead>
+&lt;tbody>
+&lt;tr>
+&lt;td>&lt;code>use_of_ip&lt;/code>&lt;/td>
+&lt;td>Whether the URL contains an IP address.&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>&lt;code>url_length&lt;/code>&lt;/td>
+&lt;td>The total length of the URL.&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>&lt;code>numOf-https&lt;/code>&lt;/td>
+&lt;td>Count of &amp;lsquo;https&amp;rsquo; occurrences in the URL.&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>&lt;code>numOf-http&lt;/code>&lt;/td>
+&lt;td>Count of &amp;lsquo;http&amp;rsquo; occurrences in the URL.&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>&lt;code>hostname_length&lt;/code>&lt;/td>
+&lt;td>Length of the hostname part of the URL.&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>&lt;code>count-digits&lt;/code>&lt;/td>
+&lt;td>Number of digits in the URL.&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>&lt;code>count-letters&lt;/code>&lt;/td>
+&lt;td>Number of alphabetic characters in the URL.&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>&lt;code>NumSensitiveWords&lt;/code>&lt;/td>
+&lt;td>Whether the URL contains sensitive words like &amp;lsquo;PayPal,&amp;rsquo; &amp;rsquo;login,&amp;rsquo; or &amp;lsquo;bank.&amp;rsquo;&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>&lt;code>numOf.&lt;/code>&lt;/td>
+&lt;td>Count of periods (&amp;rsquo;.&amp;rsquo;) in the URL.&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>&lt;code>numOf%&lt;/code>&lt;/td>
+&lt;td>Count of &amp;lsquo;%&amp;rsquo; in the URL.&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>&lt;code>numOf?&lt;/code>&lt;/td>
+&lt;td>Count of &amp;lsquo;?&amp;rsquo; in the URL.&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>&lt;code>numOf-&lt;/code>&lt;/td>
+&lt;td>Count of dashes (&amp;rsquo;-&amp;rsquo;) in the URL.&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>&lt;code>numOf=&lt;/code>&lt;/td>
+&lt;td>Count of equal signs (&amp;rsquo;=&amp;rsquo;) in the URL.&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>&lt;code>abnormal_url&lt;/code>&lt;/td>
+&lt;td>Whether the URL contains abnormal structures.&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>&lt;code>binary&lt;/code>&lt;/td>
+&lt;td>Binary representation of the URL&amp;rsquo;s classification (&lt;code>0&lt;/code> for benign, &lt;code>1&lt;/code> for malicious).&lt;/td>
+&lt;/tr>
+&lt;/tbody>
+&lt;/table>
+&lt;p>Each of these features was chosen because they are commonly found in malicious URLs, such as the presence of IP addresses, which are often used to evade detection, and sensitive keywords like &amp;rsquo;login&amp;rsquo; or &amp;lsquo;bank,&amp;rsquo; which are frequently used in phishing URLs.&lt;/p>
+&lt;hr>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;span class="lnt">3
+&lt;/span>&lt;span class="lnt">4
+&lt;/span>&lt;span class="lnt">5
+&lt;/span>&lt;span class="lnt">6
+&lt;/span>&lt;span class="lnt">7
+&lt;/span>&lt;span class="lnt">8
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-python" data-lang="python">&lt;span class="line">&lt;span class="cl">&lt;span class="k">def&lt;/span> &lt;span class="nf">having_ip_address&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">url&lt;/span>&lt;span class="p">):&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">match&lt;/span> &lt;span class="o">=&lt;/span> &lt;span class="n">re&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">search&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="s1">&amp;#39;...&amp;#39;&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">url&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">return&lt;/span> &lt;span class="mi">1&lt;/span> &lt;span class="k">if&lt;/span> &lt;span class="k">match&lt;/span> &lt;span class="k">else&lt;/span> &lt;span class="mi">0&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="n">data&lt;/span>&lt;span class="p">[&lt;/span>&lt;span class="s1">&amp;#39;use_of_ip&amp;#39;&lt;/span>&lt;span class="p">]&lt;/span> &lt;span class="o">=&lt;/span> &lt;span class="n">data&lt;/span>&lt;span class="p">[&lt;/span>&lt;span class="s1">&amp;#39;url&amp;#39;&lt;/span>&lt;span class="p">]&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">apply&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">having_ip_address&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="n">data&lt;/span>&lt;span class="p">[&lt;/span>&lt;span class="s1">&amp;#39;url_length&amp;#39;&lt;/span>&lt;span class="p">]&lt;/span> &lt;span class="o">=&lt;/span> &lt;span class="n">data&lt;/span>&lt;span class="p">[&lt;/span>&lt;span class="s1">&amp;#39;url&amp;#39;&lt;/span>&lt;span class="p">]&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">apply&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="k">lambda&lt;/span> &lt;span class="n">i&lt;/span>&lt;span class="p">:&lt;/span> &lt;span class="nb">len&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">i&lt;/span>&lt;span class="p">))&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="n">data&lt;/span>&lt;span class="p">[&lt;/span>&lt;span class="s1">&amp;#39;numOf-https&amp;#39;&lt;/span>&lt;span class="p">]&lt;/span> &lt;span class="o">=&lt;/span> &lt;span class="n">data&lt;/span>&lt;span class="p">[&lt;/span>&lt;span class="s1">&amp;#39;url&amp;#39;&lt;/span>&lt;span class="p">]&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">apply&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="k">lambda&lt;/span> &lt;span class="n">i&lt;/span>&lt;span class="p">:&lt;/span> &lt;span class="n">i&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">count&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="s1">&amp;#39;https&amp;#39;&lt;/span>&lt;span class="p">))&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="c1"># Additional features are also extracted...&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;h3 id="step-4-label-encoding">Step 4: Label Encoding
+&lt;/h3>&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;span class="lnt">3
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-python" data-lang="python">&lt;span class="line">&lt;span class="cl">&lt;span class="n">lb_make&lt;/span> &lt;span class="o">=&lt;/span> &lt;span class="n">LabelEncoder&lt;/span>&lt;span class="p">()&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="n">data&lt;/span>&lt;span class="p">[&lt;/span>&lt;span class="s1">&amp;#39;class&amp;#39;&lt;/span>&lt;span class="p">]&lt;/span> &lt;span class="o">=&lt;/span> &lt;span class="n">lb_make&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">fit_transform&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">data&lt;/span>&lt;span class="p">[&lt;/span>&lt;span class="s1">&amp;#39;type&amp;#39;&lt;/span>&lt;span class="p">])&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nb">print&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">data&lt;/span>&lt;span class="p">[&lt;/span>&lt;span class="s1">&amp;#39;class&amp;#39;&lt;/span>&lt;span class="p">]&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">head&lt;/span>&lt;span class="p">())&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>In this project, &lt;strong>label encoding&lt;/strong> is applied to the &lt;code>type&lt;/code> column, which contains the categorical URL types (e.g., &amp;ldquo;benign&amp;rdquo;, &amp;ldquo;phishing&amp;rdquo;, &amp;ldquo;malware&amp;rdquo;), to convert them into numerical values that the model can process. The &lt;strong>LabelEncoder&lt;/strong> from &lt;code>sklearn.preprocessing&lt;/code> is used to transform the text labels into integers.&lt;/p>
+&lt;p>&lt;img src="https://feras454.github.io/p/machine-learning-detection-of-malicious-urls-with-implementation-using-keras/lable.png"
+width="1087"
+height="359"
+srcset="https://feras454.github.io/p/machine-learning-detection-of-malicious-urls-with-implementation-using-keras/lable_hu_785cda8a732bf512.png 480w, https://feras454.github.io/p/machine-learning-detection-of-malicious-urls-with-implementation-using-keras/lable_hu_4566233209342e8b.png 1024w"
+loading="lazy"
+alt="Lable encoding"
+class="gallery-image"
+data-flex-grow="302"
+data-flex-basis="726px"
+>&lt;/p>
+&lt;h3 id="step-5-data-splitting">Step 5: Data Splitting
+&lt;/h3>&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;span class="lnt">3
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-python" data-lang="python">&lt;span class="line">&lt;span class="cl">&lt;span class="n">X&lt;/span> &lt;span class="o">=&lt;/span> &lt;span class="n">data&lt;/span>&lt;span class="p">[[&lt;/span>&lt;span class="s1">&amp;#39;use_of_ip&amp;#39;&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="s1">&amp;#39;url_length&amp;#39;&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="s1">&amp;#39;NumSensitiveWords&amp;#39;&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="s1">&amp;#39;numOf-https&amp;#39;&lt;/span>&lt;span class="p">]]&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="n">y&lt;/span> &lt;span class="o">=&lt;/span> &lt;span class="n">data&lt;/span>&lt;span class="p">[&lt;/span>&lt;span class="s1">&amp;#39;class&amp;#39;&lt;/span>&lt;span class="p">]&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="n">X_train&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">X_test&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">y_train&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">y_test&lt;/span> &lt;span class="o">=&lt;/span> &lt;span class="n">train_test_split&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">X&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">y&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">test_size&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="mf">0.2&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">stratify&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="n">y&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">random_state&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="mi">5&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;h3 id="step-6-neural-network-model">Step 6: Neural Network Model
+&lt;/h3>&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;span class="lnt">3
+&lt;/span>&lt;span class="lnt">4
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-python" data-lang="python">&lt;span class="line">&lt;span class="cl">&lt;span class="n">model&lt;/span> &lt;span class="o">=&lt;/span> &lt;span class="n">Sequential&lt;/span>&lt;span class="p">()&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="n">model&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">add&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">Dense&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="mi">128&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">input_shape&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">X_train&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">shape&lt;/span>&lt;span class="p">[&lt;/span>&lt;span class="mi">1&lt;/span>&lt;span class="p">],),&lt;/span> &lt;span class="n">activation&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="s1">&amp;#39;relu&amp;#39;&lt;/span>&lt;span class="p">))&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="n">model&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">add&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">Dense&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="mi">64&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">activation&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="s1">&amp;#39;relu&amp;#39;&lt;/span>&lt;span class="p">))&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="n">model&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">add&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">Dense&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="mi">4&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">activation&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="s1">&amp;#39;softmax&amp;#39;&lt;/span>&lt;span class="p">))&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>The model uses two dense layers with ReLU activation to capture non-linear patterns, and the final layer uses softmax for multi-class classification&lt;/p>
+&lt;p>![Head.png]&lt;/p>
+&lt;h3 id="step-7-compiling-and-training-the-model">Step 7: Compiling and Training the Model
+&lt;/h3>&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-python" data-lang="python">&lt;span class="line">&lt;span class="cl">&lt;span class="n">model&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">compile&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">optimizer&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="s1">&amp;#39;adam&amp;#39;&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">loss&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="s1">&amp;#39;categorical_crossentropy&amp;#39;&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">metrics&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="p">[&lt;/span>&lt;span class="s1">&amp;#39;categorical_accuracy&amp;#39;&lt;/span>&lt;span class="p">])&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="n">history&lt;/span> &lt;span class="o">=&lt;/span> &lt;span class="n">model&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">fit&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">X_train&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">y_train&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">epochs&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="mi">20&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">validation_data&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">X_test&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">y_test&lt;/span>&lt;span class="p">))&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;h3 id="step-8-model-evaluation">Step 8: Model Evaluation
+&lt;/h3>&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-python" data-lang="python">&lt;span class="line">&lt;span class="cl">&lt;span class="n">loss&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">accuracy&lt;/span> &lt;span class="o">=&lt;/span> &lt;span class="n">model&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">evaluate&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">X_test&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">y_test&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">verbose&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="kc">False&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nb">print&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="sa">f&lt;/span>&lt;span class="s1">&amp;#39;Test accuracy: &lt;/span>&lt;span class="si">{&lt;/span>&lt;span class="n">accuracy&lt;/span>&lt;span class="si">:&lt;/span>&lt;span class="s1">.3&lt;/span>&lt;span class="si">}&lt;/span>&lt;span class="s1">&amp;#39;&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>The accuracy curve shows steady learning over the epochs, and the low loss indicates that the model is fitting the data well without overfitting&lt;/p>
+&lt;h3 id="step-9-visualizing-accuracy-and-loss">Step 9: Visualizing Accuracy and Loss
+&lt;/h3>&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;span class="lnt">3
+&lt;/span>&lt;span class="lnt">4
+&lt;/span>&lt;span class="lnt">5
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-python" data-lang="python">&lt;span class="line">&lt;span class="cl">&lt;span class="n">plt&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">plot&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">history&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">history&lt;/span>&lt;span class="p">[&lt;/span>&lt;span class="s1">&amp;#39;categorical_accuracy&amp;#39;&lt;/span>&lt;span class="p">],&lt;/span> &lt;span class="n">label&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="s1">&amp;#39;Training Accuracy&amp;#39;&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="n">plt&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">plot&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">history&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">history&lt;/span>&lt;span class="p">[&lt;/span>&lt;span class="s1">&amp;#39;val_categorical_accuracy&amp;#39;&lt;/span>&lt;span class="p">],&lt;/span> &lt;span class="n">label&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="s1">&amp;#39;Validation Accuracy&amp;#39;&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="n">plt&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">title&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="s1">&amp;#39;Model Accuracy&amp;#39;&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="n">plt&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">legend&lt;/span>&lt;span class="p">()&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="n">plt&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">show&lt;/span>&lt;span class="p">()&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>&lt;img src="https://feras454.github.io/p/machine-learning-detection-of-malicious-urls-with-implementation-using-keras/acc.png"
+width="1232"
+height="960"
+srcset="https://feras454.github.io/p/machine-learning-detection-of-malicious-urls-with-implementation-using-keras/acc_hu_e22b78bdf4146a58.png 480w, https://feras454.github.io/p/machine-learning-detection-of-malicious-urls-with-implementation-using-keras/acc_hu_14151be52d23d44e.png 1024w"
+loading="lazy"
+alt="The Accuracy"
+class="gallery-image"
+data-flex-grow="128"
+data-flex-basis="308px"
+>&lt;img src="https://feras454.github.io/p/machine-learning-detection-of-malicious-urls-with-implementation-using-keras/loss.png"
+width="1254"
+height="940"
+srcset="https://feras454.github.io/p/machine-learning-detection-of-malicious-urls-with-implementation-using-keras/loss_hu_eb57543747f70402.png 480w, https://feras454.github.io/p/machine-learning-detection-of-malicious-urls-with-implementation-using-keras/loss_hu_4c8fec35ddbe6801.png 1024w"
+loading="lazy"
+alt="The Loss"
+class="gallery-image"
+data-flex-grow="133"
+data-flex-basis="320px"
+>&lt;/p>
+&lt;hr>
+&lt;h2 id="conclusion">Conclusion
+&lt;/h2>&lt;p>This project demonstrates the application of machine learning in detecting malicious URLs. The full code and dataset can be accessed on &lt;a class="link" href="https://github.com/Feras454/Detection-of-Malicious-URLs-using-machine-learning" target="_blank" rel="noopener"
+>GitHub&lt;/a>.&lt;/p>
+&lt;h3 id="references">References
+&lt;/h3>&lt;ul>
+&lt;li>&lt;strong>Ma, J., Saul, L. K., Savage, S., and Voelker, G. M. (2009).&lt;/strong> &lt;em>Beyond Blacklists: Learning to Detect Malicious Web Sites from Suspicious URLs&lt;/em>. Proceedings of the 15th ACM SIGKDD Conference on Knowledge Discovery and Data Mining.&lt;/li>
+&lt;li>&lt;strong>Verma, R. and Hossain, N. (2017).&lt;/strong> &lt;em>Phish-Zoo: Detecting Phishing Websites By Looking At Them&lt;/em>. IEEE Transactions on Dependable and Secure Computing.&lt;/li>
+&lt;li>&lt;strong>Basnet, R., Mukkamala, S., and Sung, A. H. (2008).&lt;/strong> &lt;em>Detection of Phishing Attacks: A Machine Learning Approach&lt;/em>. Studies in Fuzziness and Soft Computing.&lt;/li>
+&lt;li>&lt;strong>Buczak, A. L., and Guven, E. (2016).&lt;/strong> &lt;em>A Survey of Data Mining and Machine Learning Methods for Cybersecurity Intrusion Detection&lt;/em>. IEEE Communications Surveys &amp;amp; Tutorials.&lt;/li>
+&lt;/ul></description></item></channel></rss>

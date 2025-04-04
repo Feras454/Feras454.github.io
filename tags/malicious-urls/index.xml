@@ -1,0 +1,282 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Malicious URLs on Feras Jalalah</title><link>https://feras454.github.io/tags/malicious-urls/</link><description>Recent content in Malicious URLs on Feras Jalalah</description><generator>Hugo -- gohugo.io</generator><language>en-us</language><lastBuildDate>Mon, 07 Nov 2022 00:00:00 +0000</lastBuildDate><atom:link href="https://feras454.github.io/tags/malicious-urls/index.xml" rel="self" type="application/rss+xml"/><item><title>Machine Learning Detection of Malicious URLs with Implementation Using Keras</title><link>https://feras454.github.io/p/machine-learning-detection-of-malicious-urls-with-implementation-using-keras/</link><pubDate>Mon, 07 Nov 2022 00:00:00 +0000</pubDate><guid>https://feras454.github.io/p/machine-learning-detection-of-malicious-urls-with-implementation-using-keras/</guid><description>&lt;img src="https://feras454.github.io/p/machine-learning-detection-of-malicious-urls-with-implementation-using-keras/banner.png" alt="Featured image of post Machine Learning Detection of Malicious URLs with Implementation Using Keras" />&lt;h2 id="introduction">Introduction
+&lt;/h2>&lt;p>This project is part of the &lt;strong>Machine Learning for Cybersecurity course&lt;/strong> I am taking as a cybersecurity student at the university. While I am not an ML expert, this blog outlines how to implement a deep learning model to detect malicious URLs. I will demonstrate how a neural network can classify URLs as benign or malicious using specific features. Basic ML knowledge is required, but deep expertise is not necessary.&lt;/p>
+&lt;hr>
+&lt;h2 id="dataset">Dataset
+&lt;/h2>&lt;p>The dataset used is the &lt;strong>Malicious URLs Phishing Dataset&lt;/strong>, which contains benign and malicious URLs. The dataset and full project code are available on &lt;a class="link" href="https://github.com/Feras454/Detection-of-Malicious-URLs-using-machine-learning" target="_blank" rel="noopener"
+>GitHub&lt;/a>.&lt;/p>
+&lt;hr>
+&lt;h2 id="step-by-step-code-breakdown">Step-by-Step Code Breakdown
+&lt;/h2>&lt;h3 id="step-1-importing-necessary-libraries">Step 1: Importing Necessary Libraries
+&lt;/h3>&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt"> 1
+&lt;/span>&lt;span class="lnt"> 2
+&lt;/span>&lt;span class="lnt"> 3
+&lt;/span>&lt;span class="lnt"> 4
+&lt;/span>&lt;span class="lnt"> 5
+&lt;/span>&lt;span class="lnt"> 6
+&lt;/span>&lt;span class="lnt"> 7
+&lt;/span>&lt;span class="lnt"> 8
+&lt;/span>&lt;span class="lnt"> 9
+&lt;/span>&lt;span class="lnt">10
+&lt;/span>&lt;span class="lnt">11
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-python" data-lang="python">&lt;span class="line">&lt;span class="cl">&lt;span class="kn">import&lt;/span> &lt;span class="nn">pandas&lt;/span> &lt;span class="k">as&lt;/span> &lt;span class="nn">pd&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="kn">import&lt;/span> &lt;span class="nn">numpy&lt;/span> &lt;span class="k">as&lt;/span> &lt;span class="nn">np&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="kn">import&lt;/span> &lt;span class="nn">tensorflow&lt;/span> &lt;span class="k">as&lt;/span> &lt;span class="nn">tf&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="kn">from&lt;/span> &lt;span class="nn">matplotlib&lt;/span> &lt;span class="kn">import&lt;/span> &lt;span class="n">pyplot&lt;/span> &lt;span class="k">as&lt;/span> &lt;span class="n">plt&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="kn">import&lt;/span> &lt;span class="nn">re&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="kn">from&lt;/span> &lt;span class="nn">urllib.parse&lt;/span> &lt;span class="kn">import&lt;/span> &lt;span class="n">urlparse&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="kn">from&lt;/span> &lt;span class="nn">keras.models&lt;/span> &lt;span class="kn">import&lt;/span> &lt;span class="n">Sequential&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="kn">from&lt;/span> &lt;span class="nn">keras.layers&lt;/span> &lt;span class="kn">import&lt;/span> &lt;span class="n">Dense&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="kn">from&lt;/span> &lt;span class="nn">sklearn.model_selection&lt;/span> &lt;span class="kn">import&lt;/span> &lt;span class="n">train_test_split&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="kn">from&lt;/span> &lt;span class="nn">sklearn.preprocessing&lt;/span> &lt;span class="kn">import&lt;/span> &lt;span class="n">LabelEncoder&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="kn">from&lt;/span> &lt;span class="nn">sklearn.metrics&lt;/span> &lt;span class="kn">import&lt;/span> &lt;span class="n">accuracy_score&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">classification_report&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">confusion_matrix&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;hr>
+&lt;h3 id="step-2-loading-the-dataset">Step 2: Loading the Dataset
+&lt;/h3>&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;span class="lnt">3
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-python" data-lang="python">&lt;span class="line">&lt;span class="cl">&lt;span class="c1"># You can find the dataset on my github repo&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="n">data&lt;/span> &lt;span class="o">=&lt;/span> &lt;span class="n">pd&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">read_csv&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="s1">&amp;#39;malicious_phish.csv&amp;#39;&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nb">print&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">data&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">type&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">value_counts&lt;/span>&lt;span class="p">())&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;hr>
+&lt;p>&lt;img src="https://feras454.github.io/p/machine-learning-detection-of-malicious-urls-with-implementation-using-keras/DATA.png"
+width="437"
+height="276"
+srcset="https://feras454.github.io/p/machine-learning-detection-of-malicious-urls-with-implementation-using-keras/DATA_hu_dfc485cd2e4799fb.png 480w, https://feras454.github.io/p/machine-learning-detection-of-malicious-urls-with-implementation-using-keras/DATA_hu_95fa4c6594897f.png 1024w"
+loading="lazy"
+alt="URL samples and types"
+class="gallery-image"
+data-flex-grow="158"
+data-flex-basis="380px"
+>&lt;/p>
+&lt;h3 id="step-3-feature-engineering">Step 3: Feature Engineering
+&lt;/h3>&lt;p>Custom functions extract features like the presence of an IP address, URL length, and count of sensitive words. The features and their descriptions are listed below:&lt;/p>
+&lt;table>
+&lt;thead>
+&lt;tr>
+&lt;th>&lt;strong>Feature&lt;/strong>&lt;/th>
+&lt;th>&lt;strong>Description&lt;/strong>&lt;/th>
+&lt;/tr>
+&lt;/thead>
+&lt;tbody>
+&lt;tr>
+&lt;td>&lt;code>use_of_ip&lt;/code>&lt;/td>
+&lt;td>Whether the URL contains an IP address.&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>&lt;code>url_length&lt;/code>&lt;/td>
+&lt;td>The total length of the URL.&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>&lt;code>numOf-https&lt;/code>&lt;/td>
+&lt;td>Count of &amp;lsquo;https&amp;rsquo; occurrences in the URL.&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>&lt;code>numOf-http&lt;/code>&lt;/td>
+&lt;td>Count of &amp;lsquo;http&amp;rsquo; occurrences in the URL.&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>&lt;code>hostname_length&lt;/code>&lt;/td>
+&lt;td>Length of the hostname part of the URL.&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>&lt;code>count-digits&lt;/code>&lt;/td>
+&lt;td>Number of digits in the URL.&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>&lt;code>count-letters&lt;/code>&lt;/td>
+&lt;td>Number of alphabetic characters in the URL.&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>&lt;code>NumSensitiveWords&lt;/code>&lt;/td>
+&lt;td>Whether the URL contains sensitive words like &amp;lsquo;PayPal,&amp;rsquo; &amp;rsquo;login,&amp;rsquo; or &amp;lsquo;bank.&amp;rsquo;&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>&lt;code>numOf.&lt;/code>&lt;/td>
+&lt;td>Count of periods (&amp;rsquo;.&amp;rsquo;) in the URL.&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>&lt;code>numOf%&lt;/code>&lt;/td>
+&lt;td>Count of &amp;lsquo;%&amp;rsquo; in the URL.&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>&lt;code>numOf?&lt;/code>&lt;/td>
+&lt;td>Count of &amp;lsquo;?&amp;rsquo; in the URL.&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>&lt;code>numOf-&lt;/code>&lt;/td>
+&lt;td>Count of dashes (&amp;rsquo;-&amp;rsquo;) in the URL.&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>&lt;code>numOf=&lt;/code>&lt;/td>
+&lt;td>Count of equal signs (&amp;rsquo;=&amp;rsquo;) in the URL.&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>&lt;code>abnormal_url&lt;/code>&lt;/td>
+&lt;td>Whether the URL contains abnormal structures.&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>&lt;code>binary&lt;/code>&lt;/td>
+&lt;td>Binary representation of the URL&amp;rsquo;s classification (&lt;code>0&lt;/code> for benign, &lt;code>1&lt;/code> for malicious).&lt;/td>
+&lt;/tr>
+&lt;/tbody>
+&lt;/table>
+&lt;p>Each of these features was chosen because they are commonly found in malicious URLs, such as the presence of IP addresses, which are often used to evade detection, and sensitive keywords like &amp;rsquo;login&amp;rsquo; or &amp;lsquo;bank,&amp;rsquo; which are frequently used in phishing URLs.&lt;/p>
+&lt;hr>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;span class="lnt">3
+&lt;/span>&lt;span class="lnt">4
+&lt;/span>&lt;span class="lnt">5
+&lt;/span>&lt;span class="lnt">6
+&lt;/span>&lt;span class="lnt">7
+&lt;/span>&lt;span class="lnt">8
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-python" data-lang="python">&lt;span class="line">&lt;span class="cl">&lt;span class="k">def&lt;/span> &lt;span class="nf">having_ip_address&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">url&lt;/span>&lt;span class="p">):&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">match&lt;/span> &lt;span class="o">=&lt;/span> &lt;span class="n">re&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">search&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="s1">&amp;#39;...&amp;#39;&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">url&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">return&lt;/span> &lt;span class="mi">1&lt;/span> &lt;span class="k">if&lt;/span> &lt;span class="k">match&lt;/span> &lt;span class="k">else&lt;/span> &lt;span class="mi">0&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="n">data&lt;/span>&lt;span class="p">[&lt;/span>&lt;span class="s1">&amp;#39;use_of_ip&amp;#39;&lt;/span>&lt;span class="p">]&lt;/span> &lt;span class="o">=&lt;/span> &lt;span class="n">data&lt;/span>&lt;span class="p">[&lt;/span>&lt;span class="s1">&amp;#39;url&amp;#39;&lt;/span>&lt;span class="p">]&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">apply&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">having_ip_address&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="n">data&lt;/span>&lt;span class="p">[&lt;/span>&lt;span class="s1">&amp;#39;url_length&amp;#39;&lt;/span>&lt;span class="p">]&lt;/span> &lt;span class="o">=&lt;/span> &lt;span class="n">data&lt;/span>&lt;span class="p">[&lt;/span>&lt;span class="s1">&amp;#39;url&amp;#39;&lt;/span>&lt;span class="p">]&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">apply&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="k">lambda&lt;/span> &lt;span class="n">i&lt;/span>&lt;span class="p">:&lt;/span> &lt;span class="nb">len&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">i&lt;/span>&lt;span class="p">))&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="n">data&lt;/span>&lt;span class="p">[&lt;/span>&lt;span class="s1">&amp;#39;numOf-https&amp;#39;&lt;/span>&lt;span class="p">]&lt;/span> &lt;span class="o">=&lt;/span> &lt;span class="n">data&lt;/span>&lt;span class="p">[&lt;/span>&lt;span class="s1">&amp;#39;url&amp;#39;&lt;/span>&lt;span class="p">]&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">apply&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="k">lambda&lt;/span> &lt;span class="n">i&lt;/span>&lt;span class="p">:&lt;/span> &lt;span class="n">i&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">count&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="s1">&amp;#39;https&amp;#39;&lt;/span>&lt;span class="p">))&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="c1"># Additional features are also extracted...&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;h3 id="step-4-label-encoding">Step 4: Label Encoding
+&lt;/h3>&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;span class="lnt">3
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-python" data-lang="python">&lt;span class="line">&lt;span class="cl">&lt;span class="n">lb_make&lt;/span> &lt;span class="o">=&lt;/span> &lt;span class="n">LabelEncoder&lt;/span>&lt;span class="p">()&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="n">data&lt;/span>&lt;span class="p">[&lt;/span>&lt;span class="s1">&amp;#39;class&amp;#39;&lt;/span>&lt;span class="p">]&lt;/span> &lt;span class="o">=&lt;/span> &lt;span class="n">lb_make&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">fit_transform&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">data&lt;/span>&lt;span class="p">[&lt;/span>&lt;span class="s1">&amp;#39;type&amp;#39;&lt;/span>&lt;span class="p">])&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nb">print&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">data&lt;/span>&lt;span class="p">[&lt;/span>&lt;span class="s1">&amp;#39;class&amp;#39;&lt;/span>&lt;span class="p">]&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">head&lt;/span>&lt;span class="p">())&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>In this project, &lt;strong>label encoding&lt;/strong> is applied to the &lt;code>type&lt;/code> column, which contains the categorical URL types (e.g., &amp;ldquo;benign&amp;rdquo;, &amp;ldquo;phishing&amp;rdquo;, &amp;ldquo;malware&amp;rdquo;), to convert them into numerical values that the model can process. The &lt;strong>LabelEncoder&lt;/strong> from &lt;code>sklearn.preprocessing&lt;/code> is used to transform the text labels into integers.&lt;/p>
+&lt;p>&lt;img src="https://feras454.github.io/p/machine-learning-detection-of-malicious-urls-with-implementation-using-keras/lable.png"
+width="1087"
+height="359"
+srcset="https://feras454.github.io/p/machine-learning-detection-of-malicious-urls-with-implementation-using-keras/lable_hu_785cda8a732bf512.png 480w, https://feras454.github.io/p/machine-learning-detection-of-malicious-urls-with-implementation-using-keras/lable_hu_4566233209342e8b.png 1024w"
+loading="lazy"
+alt="Lable encoding"
+class="gallery-image"
+data-flex-grow="302"
+data-flex-basis="726px"
+>&lt;/p>
+&lt;h3 id="step-5-data-splitting">Step 5: Data Splitting
+&lt;/h3>&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;span class="lnt">3
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-python" data-lang="python">&lt;span class="line">&lt;span class="cl">&lt;span class="n">X&lt;/span> &lt;span class="o">=&lt;/span> &lt;span class="n">data&lt;/span>&lt;span class="p">[[&lt;/span>&lt;span class="s1">&amp;#39;use_of_ip&amp;#39;&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="s1">&amp;#39;url_length&amp;#39;&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="s1">&amp;#39;NumSensitiveWords&amp;#39;&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="s1">&amp;#39;numOf-https&amp;#39;&lt;/span>&lt;span class="p">]]&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="n">y&lt;/span> &lt;span class="o">=&lt;/span> &lt;span class="n">data&lt;/span>&lt;span class="p">[&lt;/span>&lt;span class="s1">&amp;#39;class&amp;#39;&lt;/span>&lt;span class="p">]&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="n">X_train&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">X_test&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">y_train&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">y_test&lt;/span> &lt;span class="o">=&lt;/span> &lt;span class="n">train_test_split&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">X&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">y&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">test_size&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="mf">0.2&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">stratify&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="n">y&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">random_state&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="mi">5&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;h3 id="step-6-neural-network-model">Step 6: Neural Network Model
+&lt;/h3>&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;span class="lnt">3
+&lt;/span>&lt;span class="lnt">4
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-python" data-lang="python">&lt;span class="line">&lt;span class="cl">&lt;span class="n">model&lt;/span> &lt;span class="o">=&lt;/span> &lt;span class="n">Sequential&lt;/span>&lt;span class="p">()&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="n">model&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">add&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">Dense&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="mi">128&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">input_shape&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">X_train&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">shape&lt;/span>&lt;span class="p">[&lt;/span>&lt;span class="mi">1&lt;/span>&lt;span class="p">],),&lt;/span> &lt;span class="n">activation&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="s1">&amp;#39;relu&amp;#39;&lt;/span>&lt;span class="p">))&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="n">model&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">add&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">Dense&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="mi">64&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">activation&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="s1">&amp;#39;relu&amp;#39;&lt;/span>&lt;span class="p">))&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="n">model&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">add&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">Dense&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="mi">4&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">activation&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="s1">&amp;#39;softmax&amp;#39;&lt;/span>&lt;span class="p">))&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>The model uses two dense layers with ReLU activation to capture non-linear patterns, and the final layer uses softmax for multi-class classification&lt;/p>
+&lt;p>![Head.png]&lt;/p>
+&lt;h3 id="step-7-compiling-and-training-the-model">Step 7: Compiling and Training the Model
+&lt;/h3>&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-python" data-lang="python">&lt;span class="line">&lt;span class="cl">&lt;span class="n">model&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">compile&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">optimizer&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="s1">&amp;#39;adam&amp;#39;&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">loss&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="s1">&amp;#39;categorical_crossentropy&amp;#39;&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">metrics&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="p">[&lt;/span>&lt;span class="s1">&amp;#39;categorical_accuracy&amp;#39;&lt;/span>&lt;span class="p">])&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="n">history&lt;/span> &lt;span class="o">=&lt;/span> &lt;span class="n">model&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">fit&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">X_train&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">y_train&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">epochs&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="mi">20&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">validation_data&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">X_test&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">y_test&lt;/span>&lt;span class="p">))&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;h3 id="step-8-model-evaluation">Step 8: Model Evaluation
+&lt;/h3>&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-python" data-lang="python">&lt;span class="line">&lt;span class="cl">&lt;span class="n">loss&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">accuracy&lt;/span> &lt;span class="o">=&lt;/span> &lt;span class="n">model&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">evaluate&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">X_test&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">y_test&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">verbose&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="kc">False&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nb">print&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="sa">f&lt;/span>&lt;span class="s1">&amp;#39;Test accuracy: &lt;/span>&lt;span class="si">{&lt;/span>&lt;span class="n">accuracy&lt;/span>&lt;span class="si">:&lt;/span>&lt;span class="s1">.3&lt;/span>&lt;span class="si">}&lt;/span>&lt;span class="s1">&amp;#39;&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>The accuracy curve shows steady learning over the epochs, and the low loss indicates that the model is fitting the data well without overfitting&lt;/p>
+&lt;h3 id="step-9-visualizing-accuracy-and-loss">Step 9: Visualizing Accuracy and Loss
+&lt;/h3>&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;span class="lnt">3
+&lt;/span>&lt;span class="lnt">4
+&lt;/span>&lt;span class="lnt">5
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-python" data-lang="python">&lt;span class="line">&lt;span class="cl">&lt;span class="n">plt&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">plot&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">history&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">history&lt;/span>&lt;span class="p">[&lt;/span>&lt;span class="s1">&amp;#39;categorical_accuracy&amp;#39;&lt;/span>&lt;span class="p">],&lt;/span> &lt;span class="n">label&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="s1">&amp;#39;Training Accuracy&amp;#39;&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="n">plt&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">plot&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">history&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">history&lt;/span>&lt;span class="p">[&lt;/span>&lt;span class="s1">&amp;#39;val_categorical_accuracy&amp;#39;&lt;/span>&lt;span class="p">],&lt;/span> &lt;span class="n">label&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="s1">&amp;#39;Validation Accuracy&amp;#39;&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="n">plt&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">title&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="s1">&amp;#39;Model Accuracy&amp;#39;&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="n">plt&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">legend&lt;/span>&lt;span class="p">()&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="n">plt&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">show&lt;/span>&lt;span class="p">()&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>&lt;img src="https://feras454.github.io/p/machine-learning-detection-of-malicious-urls-with-implementation-using-keras/acc.png"
+width="1232"
+height="960"
+srcset="https://feras454.github.io/p/machine-learning-detection-of-malicious-urls-with-implementation-using-keras/acc_hu_e22b78bdf4146a58.png 480w, https://feras454.github.io/p/machine-learning-detection-of-malicious-urls-with-implementation-using-keras/acc_hu_14151be52d23d44e.png 1024w"
+loading="lazy"
+alt="The Accuracy"
+class="gallery-image"
+data-flex-grow="128"
+data-flex-basis="308px"
+>&lt;img src="https://feras454.github.io/p/machine-learning-detection-of-malicious-urls-with-implementation-using-keras/loss.png"
+width="1254"
+height="940"
+srcset="https://feras454.github.io/p/machine-learning-detection-of-malicious-urls-with-implementation-using-keras/loss_hu_eb57543747f70402.png 480w, https://feras454.github.io/p/machine-learning-detection-of-malicious-urls-with-implementation-using-keras/loss_hu_4c8fec35ddbe6801.png 1024w"
+loading="lazy"
+alt="The Loss"
+class="gallery-image"
+data-flex-grow="133"
+data-flex-basis="320px"
+>&lt;/p>
+&lt;hr>
+&lt;h2 id="conclusion">Conclusion
+&lt;/h2>&lt;p>This project demonstrates the application of machine learning in detecting malicious URLs. The full code and dataset can be accessed on &lt;a class="link" href="https://github.com/Feras454/Detection-of-Malicious-URLs-using-machine-learning" target="_blank" rel="noopener"
+>GitHub&lt;/a>.&lt;/p>
+&lt;h3 id="references">References
+&lt;/h3>&lt;ul>
+&lt;li>&lt;strong>Ma, J., Saul, L. K., Savage, S., and Voelker, G. M. (2009).&lt;/strong> &lt;em>Beyond Blacklists: Learning to Detect Malicious Web Sites from Suspicious URLs&lt;/em>. Proceedings of the 15th ACM SIGKDD Conference on Knowledge Discovery and Data Mining.&lt;/li>
+&lt;li>&lt;strong>Verma, R. and Hossain, N. (2017).&lt;/strong> &lt;em>Phish-Zoo: Detecting Phishing Websites By Looking At Them&lt;/em>. IEEE Transactions on Dependable and Secure Computing.&lt;/li>
+&lt;li>&lt;strong>Basnet, R., Mukkamala, S., and Sung, A. H. (2008).&lt;/strong> &lt;em>Detection of Phishing Attacks: A Machine Learning Approach&lt;/em>. Studies in Fuzziness and Soft Computing.&lt;/li>
+&lt;li>&lt;strong>Buczak, A. L., and Guven, E. (2016).&lt;/strong> &lt;em>A Survey of Data Mining and Machine Learning Methods for Cybersecurity Intrusion Detection&lt;/em>. IEEE Communications Surveys &amp;amp; Tutorials.&lt;/li>
+&lt;/ul></description></item></channel></rss>
