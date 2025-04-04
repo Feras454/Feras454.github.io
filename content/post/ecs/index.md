@@ -68,7 +68,7 @@ These aren't headline features, but they’re the ones that save hours when you'
 
 ---
 
-Detection logic benefits too.
+### Detection logic benefits too.
 
 I wrote a rule once that looked for suspicious parent-child process combos. It matched on `process.command_line` and `process.parent.name`. Because both EDR and Sysmon were mapped to ECS, I didn’t have to build two versions of the rule. One rule, multiple sources. That’s the real-world win here.
 
@@ -81,3 +81,14 @@ It’s not about “using the standard”  it’s about reducing friction. Less 
 If you're dealing with more than one log source, ECS isn't something to consider later. It’s something to implement now.
 
 You'll feel the difference the next time you're in the middle of an investigation and the logs — all of them — finally speak the same language.
+
+---
+
+### References
+
+- 📖 [What is ECS? - Elastic Documentation](https://www.elastic.co/guide/en/ecs/current/ecs-reference.html#_what_is_ecs)  
+  A concise introduction to the goals and purpose of ECS from the Elastic team.
+
+- 📚 [ECS Field Reference](https://www.elastic.co/guide/en/ecs/current/ecs-field-reference.html)  
+  Full list of ECS fields and data types, organized by categories.
+
