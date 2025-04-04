@@ -16,7 +16,7 @@ tags:
 ---
 
 ## Introduction
-This project is part of the **Machine Learning for Cybersecurity course** I am taking as a cybersecurity student at the university. While I am not an ML engineer, this blog outlines how to implement a deep learning model to detect malicious URLs. I will demonstrate how a neural network can classify URLs as benign or malicious using specific features. Basic ML knowledge is required, but deep expertise is not necessary.
+This project is part of the **Machine Learning for Cybersecurity course** I am taking as a cybersecurity student at the university. While I am not an ML expert, this blog outlines how to implement a deep learning model to detect malicious URLs. I will demonstrate how a neural network can classify URLs as benign or malicious using specific features. Basic ML knowledge is required, but deep expertise is not necessary.
 
 
 ---
@@ -120,7 +120,7 @@ model.add(Dense(4, activation='softmax'))
 
 The model uses two dense layers with ReLU activation to capture non-linear patterns, and the final layer uses softmax for multi-class classification
 
-![[Head.png]]
+![Head.png]
 
 ### Step 7: Compiling and Training the Model
 ```python
