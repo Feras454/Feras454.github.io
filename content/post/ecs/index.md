@@ -86,9 +86,9 @@ You'll feel the difference the next time you're in the middle of an investigatio
 
 ### References
 
-- 📖 [What is ECS? - Elastic Documentation](https://www.elastic.co/guide/en/ecs/current/ecs-reference.html#_what_is_ecs)  
+-  [What is ECS? - Elastic Documentation](https://www.elastic.co/guide/en/ecs/current/ecs-reference.html#_what_is_ecs)  
   A concise introduction to the goals and purpose of ECS from the Elastic team.
 
-- 📚 [ECS Field Reference](https://www.elastic.co/guide/en/ecs/current/ecs-field-reference.html)  
+-  [ECS Field Reference](https://www.elastic.co/guide/en/ecs/current/ecs-field-reference.html)  
   Full list of ECS fields and data types, organized by categories.
 
