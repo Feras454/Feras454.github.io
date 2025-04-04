@@ -453,4 +453,3 @@ PowerShell enhances security utilities like Sysinternals for effective IR:
  
 
 
-![](power.jpg)
