@@ -1,6 +1,6 @@
 ---
 title: Why ECS Actually Matters for DFIR
-description: Ivestigating Across Logs Without Losing Your Mind
+description: Investigating Across Logs Without Losing Your Mind
 date: 2025-04-04
 image: ecs.png
 license: 
