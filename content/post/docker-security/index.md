@@ -5,7 +5,7 @@ date: 2023-11-27
 image: dockerr.webp
 license: 
 comments: false
-draft: false
+draft: true
 
 categories:
     - Threat hunting

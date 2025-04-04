@@ -136,7 +136,7 @@ print(f'Test accuracy: {accuracy:.3}')
 
 The accuracy curve shows steady learning over the epochs, and the low loss indicates that the model is fitting the data well without overfitting
 
-![[Pasted image 20241026151743.png]]
+ 
 
 
 ### Step 9: Visualizing Accuracy and Loss

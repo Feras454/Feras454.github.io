@@ -1,7 +1,7 @@
 ---
 title: Useful PowerShell Commands for Incident Response (IR) triage
 description:
-date: 2024-07-07
+date: 2024-02-07
 image: powershell.webp
 license: 
 comments: false
