@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Threat Hunting on Feras Jalalah</title><link>https://feras454.github.io/categories/threat-hunting/</link><description>Recent content in Threat Hunting on Feras Jalalah</description><generator>Hugo -- gohugo.io</generator><language>en-us</language><lastBuildDate>Sat, 19 Apr 2025 00:00:00 +0000</lastBuildDate><atom:link href="https://feras454.github.io/categories/threat-hunting/index.xml" rel="self" type="application/rss+xml"/><item><title>Why ECS Actually Matters for DFIR</title><link>https://feras454.github.io/p/why-ecs-actually-matters-for-dfir/</link><pubDate>Sat, 19 Apr 2025 00:00:00 +0000</pubDate><guid>https://feras454.github.io/p/why-ecs-actually-matters-for-dfir/</guid><description>&lt;img src="https://feras454.github.io/p/why-ecs-actually-matters-for-dfir/ecs.png" alt="Featured image of post Why ECS Actually Matters for DFIR" />&lt;p>In DFIR or as a SOC analyst you search across many logs. Each source names the same thing differently and that wastes time. &lt;strong>Elastic Common Schema (ECS) gives one set of fields so one query runs across Sysmon, EDR, firewall, WAF and web server logs. Less field fixing, faster correlation, more time on the facts.&lt;/strong>&lt;/p>
+&lt;p>ECS is Elastic’s schema, but you can use it as a neutral normalization target across your logging pipeline. One set of field names with the same meaning across sources. Saved searches and detections work everywhere you mapped. Pivots are predictable. Timelines align accurately. Instead of maintaining separate filters for src, src_ip and client_ip, you use source.ip, which removes ambiguity and improves triage efficiency.&lt;/p>
+&lt;p>&lt;img src="https://feras454.github.io/p/why-ecs-actually-matters-for-dfir/ecs.png"
+width="1600"
+height="900"
+srcset="https://feras454.github.io/p/why-ecs-actually-matters-for-dfir/ecs_hu_59519ba34bdce32b.png 480w, https://feras454.github.io/p/why-ecs-actually-matters-for-dfir/ecs_hu_44a1ab9c9869783.png 1024w"
+loading="lazy"
+alt="ECS field mapping example"
+class="gallery-image"
+data-flex-grow="177"
+data-flex-basis="426px"
+>&lt;/p>
+&lt;h1 id="why-it-matters">why it matters
+&lt;/h1>&lt;p>Correlation becomes more precise. With consistent user, host and IP fields and predictable timestamps, you can align events, follow an entity across datasets, identify gaps and determine the blast radius by user and host without rewriting filters. Normalize all timestamps to UTC and rely on @timestamp for event order to avoid misaligned timelines.&lt;/p>
+&lt;p>Rules and workflows remain stable. Saved searches, detections and automations continue to function when data sources or pipelines change. Playbooks reference the same fields across all sources, which makes handoffs smoother and reduces maintenance overhead.&lt;/p>
+&lt;p>Consider a common case. You identify suspicious command execution and need to determine its scope. Without ECS, you must create separate filters for process fields in EDR and Sysmon, and different IP fields in WAF and access logs. With ECS, you filter once on process.name, process.command_line, source.ip and destination.ip, then apply it to all mapped sources.&lt;/p>
+&lt;h1 id="what-to-map-first">what to map first
+&lt;/h1>&lt;p>Map the fields that drive most pivots and scoping first. Use user.* for identity, process.* for execution, host.* for machine context, url.* and http.* for web activity, and source.ip plus destination.ip for network edges. With these in place your core queries and detections usually run across EDR, Sysmon, WAF and web logs without edits. Extend with file.* and registry.* when you need Windows persistence, and cloud.account.* and cloud.instance.* as you add cloud telemetry.&lt;/p>
+&lt;p>ECS will not map every source completely and some fields will remain empty. It still provides significant value. Expand as you integrate additional log sources.&lt;/p>
+&lt;p>The reason to adopt ECS is straightforward. You reduce query maintenance, improve consistency and focus more time on determining what happened, the extent of the impact and the required response.&lt;/p>
+&lt;hr>
+&lt;h3 id="references">References
+&lt;/h3>&lt;ul>
+&lt;li>
+&lt;p>&lt;a class="link" href="https://www.elastic.co/guide/en/ecs/current/ecs-reference.html#_what_is_ecs" target="_blank" rel="noopener"
+>What is ECS? - Elastic Documentation&lt;/a>&lt;br>
+A concise introduction to the goals and purpose of ECS from the Elastic team.&lt;/p>
+&lt;/li>
+&lt;li>
+&lt;p>&lt;a class="link" href="https://www.elastic.co/guide/en/ecs/current/ecs-field-reference.html" target="_blank" rel="noopener"
+>ECS Field Reference&lt;/a>&lt;br>
+Full list of ECS fields and data types, organized by categories.&lt;/p>
+&lt;/li>
+&lt;/ul></description></item></channel></rss>
