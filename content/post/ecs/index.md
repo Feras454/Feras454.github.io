@@ -5,8 +5,7 @@ date: 2025-04-21
 image: ecs.png
 license: 
 comments: false
-draft: true
-noindex: true
+draft: false
 
 
 categories:

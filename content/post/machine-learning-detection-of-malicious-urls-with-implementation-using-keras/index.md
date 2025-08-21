@@ -5,7 +5,8 @@ date: 2022-11-07 00:00:00+0000
 image: banner.png
 license: 
 comments: false
-draft: false
+draft: true
+noindex: true
 categories:
 - Cybersecurity Projects
 
