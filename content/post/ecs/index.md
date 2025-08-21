@@ -5,7 +5,9 @@ date: 2025-04-21
 image: ecs.png
 license: 
 comments: false
-draft: false
+draft: true
+noindex: true
+
 
 categories:
     - Threat hunting
