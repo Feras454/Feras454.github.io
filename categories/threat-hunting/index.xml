@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Threat Hunting on Feras Jalalah</title><link>https://feras454.github.io/categories/threat-hunting/</link><description>Recent content in Threat Hunting on Feras Jalalah</description><generator>Hugo -- gohugo.io</generator><language>en-us</language><lastBuildDate>Mon, 21 Apr 2025 00:00:00 +0000</lastBuildDate><atom:link href="https://feras454.github.io/categories/threat-hunting/index.xml" rel="self" type="application/rss+xml"/><item><title>Why ECS Actually Matters for DFIR</title><link>https://feras454.github.io/p/why-ecs-actually-matters-for-dfir/</link><pubDate>Mon, 21 Apr 2025 00:00:00 +0000</pubDate><guid>https://feras454.github.io/p/why-ecs-actually-matters-for-dfir/</guid><description>&lt;img src="https://feras454.github.io/p/why-ecs-actually-matters-for-dfir/ecs.png" alt="Featured image of post Why ECS Actually Matters for DFIR" />&lt;p>DFIR/Detection engineers work needs searches across many logs/artifacts from many sources. Each source names the same concept differently, which slows triage and analysis. ECS defines one field set across sources so one query runs everywhere. Less field fixing, faster links, and more time spent on facts.&lt;/p>
+&lt;p>ECS defines shared field names you can map every source to. Map all inputs to shared names, keep semantics stable across products. Saved searches and detections remain valid when pipelines or vendors change. Timelines align cleanly when every event uses UTC and a single timestamp.&lt;/p>
+&lt;p>&lt;img src="https://feras454.github.io/p/why-ecs-actually-matters-for-dfir/ecs1.jpg"
+width="1600"
+height="322"
+srcset="https://feras454.github.io/p/why-ecs-actually-matters-for-dfir/ecs1_hu_fa98881dc2c11b43.jpg 480w, https://feras454.github.io/p/why-ecs-actually-matters-for-dfir/ecs1_hu_5842859ef5d84f3d.jpg 1024w"
+loading="lazy"
+alt="ECS field mapping example"
+class="gallery-image"
+data-flex-grow="496"
+data-flex-basis="1192px"
+>&lt;/p>
+&lt;hr>
+&lt;h1 id="why-it-matters">why it matters
+&lt;/h1>&lt;p>Consistent user, host, process, and IP fields make pivots direct and repeatable. Events line up across sources, so scoping and blast radius checks run faster. Content stays stable when inputs change, since rules reference the same names. Analysts avoid custom filters for each product and keep focus on behavior. One case shows the effect: suspicious command runs, you need scope fast. With ECS, filter on process.name and process.command_line across EDR and Sysmon. Add source.ip and destination.ip, reuse the same query in WAF and access logs.&lt;/p>
+&lt;h1 id="what-to-map-first">what to map first
+&lt;/h1>&lt;p>Start with fields that drive pivots and scoping, not every detail today. Identity uses user.name, user.domain, and user.id, keep values clean and consistent. Host context uses host.hostname and host.ip, avoid free text labels entirely. Execution uses process.name, process.executable, and process.command_line, include parent links too. Network uses source.ip, source.port, destination.ip, destination.port, and network.transport for clarity and joins. Web uses url.full, url.path, http.request.method, and user_agent.original for agents and headers. Add file.* and registry.* for Windows work when persistence matters. Add cloud.account.* and cloud.instance.* when cloud sources enter your scope. Map the core fields first.&lt;/p>
+&lt;hr>
+&lt;h1 id="references">References
+&lt;/h1>&lt;ul>
+&lt;li>
+&lt;p>&lt;a class="link" href="https://www.elastic.co/guide/en/ecs/current/ecs-reference.html#_what_is_ecs" target="_blank" rel="noopener"
+>What is ECS? - Elastic Documentation&lt;/a>&lt;/p>
+&lt;/li>
+&lt;li>
+&lt;p>&lt;a class="link" href="https://www.elastic.co/guide/en/ecs/current/ecs-field-reference.html" target="_blank" rel="noopener"
+>ECS Field Reference&lt;/a>&lt;/p>
+&lt;/li>
+&lt;/ul></description></item></channel></rss>
