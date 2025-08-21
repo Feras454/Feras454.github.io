@@ -27,8 +27,7 @@ Consistent user, host, process, and IP fields make pivots direct and repeatable.
 
 # what to map first
 
-Start with fields that drive pivots and scoping, not every detail today. Identity uses user.name, user.domain, and user.id, keep values clean and consistent. Host context uses host.hostname and host.ip, avoid free text labels entirely. Execution uses process.name, process.executable, and process.command_line, include parent links too. Network uses source.ip, source.port, destination.ip, destination.port, and network.transport for clarity and joins. Web uses url.full, url.path, http.request.method, and user_agent.original for agents and headers. Add file.* and registry.* for Windows work when persistence matters. Add cloud.account.* and cloud.instance.* when cloud sources enter your scope.  
-Map the core fields first.
+Start with fields that drive pivots and scoping, not every detail today. Identity uses user.name, user.domain, and user.id, keep values clean and consistent. Host context uses host.hostname and host.ip, avoid free text labels entirely. Execution uses process.name, process.executable, and process.command_line, include parent links too. Network uses source.ip, source.port, destination.ip, destination.port, and network.transport for clarity and joins. Web uses url.full, url.path, http.request.method, and user_agent.original for agents and headers. Add file.* and registry.* for Windows work when persistence matters. Add cloud.account.* and cloud.instance.* when cloud sources enter your scope. Map the core fields first.
 
 
 
