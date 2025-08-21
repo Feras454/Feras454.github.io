@@ -12,33 +12,49 @@ categories:
 ---
 
 
-In DFIR or as a SOC analyst you search across many logs. Each source names the same thing differently and that wastes time. **Elastic Common Schema (ECS) gives one set of fields so one query runs across Sysmon, EDR, firewall, WAF and web server logs. Less field fixing, faster correlation, more time on the facts.**
+DFIR work needs searches across many logs/artifacts from many sources.  
+Each source names the same concept differently, which slows triage and analysis.  
+ECS defines one field set across sources so one query runs everywhere.  
+Less field fixing, faster links, and more time spent on facts.
 
-ECS is Elastic’s schema, but you can use it as a neutral normalization target across your logging pipeline. One set of field names with the same meaning across sources. Saved searches and detections work everywhere you mapped. Pivots are predictable. Timelines align accurately. Instead of maintaining separate filters for src, src_ip and client_ip, you use source.ip, which removes ambiguity and improves triage efficiency.
+ECS comes from Elastic, yet it works as a neutral target.  
+Map all inputs to shared names, keep semantics stable across products.  
+Saved searches and detections remain valid when pipelines or vendors change.  
+Timelines align cleanly when every event uses UTC and a single timestamp.  
+Keep the original offset in event.timezone if auditors need it.  
+Stop juggling src, src_ip, and client_ip, use source.ip and destination.ip.  
+When proxies exist, parse headers and fill client.ip with the real origin.
 
-![ECS field mapping example](ecs.png)
+![ECS field mapping example](ecs1.jpg)
 
 # why it matters
-Correlation becomes more precise. With consistent user, host and IP fields and predictable timestamps, you can align events, follow an entity across datasets, identify gaps and determine the blast radius by user and host without rewriting filters. Normalize all timestamps to UTC and rely on @timestamp for event order to avoid misaligned timelines.
-
-Rules and workflows remain stable. Saved searches, detections and automations continue to function when data sources or pipelines change. Playbooks reference the same fields across all sources, which makes handoffs smoother and reduces maintenance overhead.
-
-Consider a common case. You identify suspicious command execution and need to determine its scope. Without ECS, you must create separate filters for process fields in EDR and Sysmon, and different IP fields in WAF and access logs. With ECS, you filter once on process.name, process.command_line, source.ip and destination.ip, then apply it to all mapped sources.
+Consistent user, host, process, and IP fields make pivots direct and repeatable.  
+Events line up across sources, so scoping and blast radius checks run faster.  
+Content stays stable when inputs change, since rules reference the same names.  
+Analysts avoid custom filters for each product and keep focus on behavior.  
+One case shows the effect: suspicious command runs, you need scope fast.  
+With ECS, filter on process.name and process.command_line across EDR and Sysmon.  
+Add source.ip and destination.ip, reuse the same query in WAF and access logs.
 
 # what to map first
-Map the fields that drive most pivots and scoping first. Use user.* for identity, process.* for execution, host.* for machine context, url.* and http.* for web activity, and source.ip plus destination.ip for network edges. With these in place your core queries and detections usually run across EDR, Sysmon, WAF and web logs without edits. Extend with file.* and registry.* when you need Windows persistence, and cloud.account.* and cloud.instance.* as you add cloud telemetry.
+Start with fields that drive pivots and scoping, not every detail today.  
+Identity uses user.name, user.domain, and user.id, keep values clean and consistent.  
+Host context uses host.hostname and host.ip, avoid free text labels entirely.  
+Execution uses process.name, process.executable, and process.command_line, include parent links too.  
+Network uses source.ip, source.port, destination.ip, destination.port, and network.transport for clarity and joins.  
+Web uses url.full, url.path, http.request.method, and user_agent.original for agents and headers.  
+Add file.* and registry.* for Windows work when persistence matters.  
+Add cloud.account.* and cloud.instance.* when cloud sources enter your scope.  
+Empty fields will exist, that is fine, map the core first.
 
-ECS will not map every source completely and some fields will remain empty. It still provides significant value. Expand as you integrate additional log sources.
-
-The reason to adopt ECS is straightforward. You reduce query maintenance, improve consistency and focus more time on determining what happened, the extent of the impact and the required response.
 
 ---
 
 ### References
 
 -  [What is ECS? - Elastic Documentation](https://www.elastic.co/guide/en/ecs/current/ecs-reference.html#_what_is_ecs)  
-  A concise introduction to the goals and purpose of ECS from the Elastic team.
+  
 
 -  [ECS Field Reference](https://www.elastic.co/guide/en/ecs/current/ecs-field-reference.html)  
-  Full list of ECS fields and data types, organized by categories.
+  
 
