@@ -16,7 +16,7 @@ categories:
 
 DFIR/Detection engineers work needs searches across many logs/artifacts from many sources. Each source names the same concept differently, which slows triage and analysis. ECS defines one field set across sources so one query runs everywhere. Less field fixing, faster links, and more time spent on facts.
 
-ECS defines shared field names you can map every source to. Map all inputs to shared names, keep semantics stable across products. Saved searches and detections remain valid when pipelines or vendors change. Timelines align cleanly when every event uses UTC and a single timestamp.  
+ECS defines shared field names you can map every source to. Map all inputs to shared names, keep semantics stable across products. Saved searches and detections remain valid when pipelines or vendors change. Timelines align cleanly when every event uses UTC and a single timestamp. 
 
 ![ECS field mapping example](ecs1.jpg)
 
